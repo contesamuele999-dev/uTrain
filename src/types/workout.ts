@@ -11,7 +11,8 @@ export type MuscleGroup =
   | 'forearms'
   | 'core'
   | 'cardio'
-  | 'full_body';
+  | 'full_body'
+  | 'other';
 
 export type EquipmentType =
   | 'barbell'
@@ -24,6 +25,8 @@ export type EquipmentType =
   | 'band'
   | 'other';
 
+export type SetType = 'normal' | 'warmup' | 'drop' | 'failure';
+
 export interface Exercise {
   id: string;
   name: string;
@@ -31,28 +34,27 @@ export interface Exercise {
   secondaryMuscles?: MuscleGroup[];
   equipment: EquipmentType;
   instructions?: string;
+  tips?: string[];
   isCustom?: boolean;
 }
 
-export type SetType = 'warmup' | 'normal' | 'drop' | 'failure';
-
 export interface RoutineExercise {
-  id: string; // unique for this routine instance
+  id: string;
   exerciseId: string;
   name: string;
   muscleGroup: MuscleGroup;
   targetSets: number;
   targetRepsMin: number;
   targetRepsMax: number;
-  targetRpe?: number; // Rate of Perceived Exertion (1-10)
-  targetRestSeconds: number;
+  targetRpe?: number;
+  targetRestSeconds?: number;
   notes?: string;
   suggestedWeight?: number;
 }
 
 export interface RoutineDay {
   id: string;
-  name: string; // e.g., "Giorno A - Push (Petto, Spalle, Tricipiti)"
+  name: string;
   exercises: RoutineExercise[];
 }
 
@@ -73,11 +75,10 @@ export interface CompletedSet {
   id: string;
   setNumber: number;
   type: SetType;
-  weight: number; // in kg
+  weight: number;
   reps: number;
-  completed: boolean;
   rpe?: number;
-  notes?: string;
+  completed: boolean;
   isPR?: boolean;
 }
 
@@ -88,12 +89,6 @@ export interface CompletedExerciseLog {
   muscleGroup: MuscleGroup;
   sets: CompletedSet[];
   notes?: string;
-  suggestedOverload?: {
-    action: 'increase_weight' | 'increase_reps' | 'maintain' | 'deload';
-    recommendedWeight?: number;
-    recommendedReps?: number;
-    reason: string;
-  };
 }
 
 export interface WorkoutSession {
@@ -102,15 +97,15 @@ export interface WorkoutSession {
   routineTitle?: string;
   dayId?: string;
   dayName?: string;
-  startTime: string; // ISO String
-  endTime?: string; // ISO String
+  startTime: string;
+  endTime?: string;
   durationSeconds: number;
   exercises: CompletedExerciseLog[];
   totalVolumeKg: number;
   totalSets: number;
   totalReps: number;
   notes?: string;
-  rating?: number; // 1-5 stars
+  rating?: number;
   prsAchieved?: Array<{
     exerciseName: string;
     type: 'weight' | 'volume' | 'reps' | 'estimated1RM';
@@ -122,10 +117,10 @@ export interface WorkoutSession {
 export interface PersonalRecord {
   exerciseId: string;
   exerciseName: string;
-  maxWeight: number; // Max weight lifted
+  maxWeight: number;
   maxWeightReps: number;
-  maxEstimated1RM: number; // Max estimated 1 rep max
-  bestVolumeSet: number; // weight * reps in single set
+  maxEstimated1RM: number;
+  bestVolumeSet: number;
   date: string;
 }
 
@@ -137,6 +132,6 @@ export interface UserProfileSettings {
   soundEnabled: boolean;
   vibrationEnabled: boolean;
   geminiApiKey: string;
-  geminiModel: 'gemini-1.5-flash' | 'gemini-2.0-flash' | 'gemini-1.5-pro';
+  geminiModel: 'gemini-2.0-flash-lite' | 'gemini-2.0-flash' | 'gemini-1.5-flash' | 'gemini-1.5-pro' | string;
   activeRoutineId?: string;
 }

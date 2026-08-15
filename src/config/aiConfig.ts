@@ -1,12 +1,10 @@
 /**
  * Configurazione Globale Google Gemini AI per uTrain
- * La chiave configurata qui (o tramite variabile d'ambiente VITE_GEMINI_API_KEY)
- * viene utilizzata automaticamente per tutti gli utenti senza necessità di richiederla nel browser.
+ * Modello predefinito: Gemini 2.0 Flash Lite (Ultra Veloce, Efficiente e Gratuito)
  */
 
 export const AI_CONFIG = {
-  // Se presente una variabile d'ambiente VITE_GEMINI_API_KEY, usa quella; altrimenti usa la chiave statica predefinita
   DEFAULT_API_KEY: (import.meta.env.VITE_GEMINI_API_KEY as string) || '',
-  DEFAULT_MODEL: 'gemini-1.5-flash',
+  DEFAULT_MODEL: (import.meta.env.VITE_GEMINI_MODEL as string) || 'gemini-2.0-flash-lite',
   APP_NAME: 'uTrain AI Coach',
 };

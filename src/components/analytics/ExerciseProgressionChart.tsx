@@ -35,7 +35,6 @@ export const ExerciseProgressionChart: React.FC<ExerciseProgressionChartProps> =
   sessions,
   prs,
 }) => {
-  // Extract all unique exercises logged across sessions
   const exerciseMap: Record<string, string> = {};
   sessions.forEach((s) => {
     s.exercises.forEach((e) => {
@@ -52,16 +51,14 @@ export const ExerciseProgressionChart: React.FC<ExerciseProgressionChartProps> =
 
   if (availableExerciseIds.length === 0) {
     return (
-      <div className="glass-card" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
+      <div className="glass-card" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
         Nessun dato di allenamento sufficiente per tracciare i grafici di progressione. Completa una sessione o carica i dati demo nelle impostazioni!
       </div>
     );
   }
 
-  // Filter and build chronology of 1RM and Max Weight for selected exercise
   const dataPoints: Array<{ date: string; maxWeight: number; estimated1RM: number }> = [];
 
-  // Sort sessions chronologically (oldest to newest)
   const sortedSessions = [...sessions].sort(
     (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
   );
@@ -94,7 +91,6 @@ export const ExerciseProgressionChart: React.FC<ExerciseProgressionChartProps> =
 
   const activePR = prs[selectedExerciseId];
 
-  // Calculate delta percentage
   const initial1RM = oneRMData[0] || 0;
   const current1RM = oneRMData[oneRMData.length - 1] || 0;
   const delta1RM = current1RM - initial1RM;
@@ -108,23 +104,22 @@ export const ExerciseProgressionChart: React.FC<ExerciseProgressionChartProps> =
         data: oneRMData,
         borderColor: '#10b981',
         backgroundColor: 'rgba(16, 185, 129, 0.12)',
-        borderWidth: 3,
+        borderWidth: 2.5,
         pointBackgroundColor: '#10b981',
         pointBorderColor: '#fff',
-        pointRadius: 5,
-        pointHoverRadius: 7,
+        pointRadius: 4,
         tension: 0.35,
         fill: true,
       },
       {
-        label: 'Carico Massimo Sollevato (kg)',
+        label: 'Carico Max (kg)',
         data: maxWeightData,
         borderColor: '#3b82f6',
         backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderDash: [5, 5],
+        borderWidth: 1.5,
+        borderDash: [4, 4],
         pointBackgroundColor: '#3b82f6',
-        pointRadius: 4,
+        pointRadius: 3,
         tension: 0.2,
       },
     ],
@@ -138,7 +133,8 @@ export const ExerciseProgressionChart: React.FC<ExerciseProgressionChartProps> =
         position: 'top' as const,
         labels: {
           color: '#94a3b8',
-          font: { family: 'Plus Jakarta Sans', size: 12, weight: 600 as const },
+          font: { family: 'Plus Jakarta Sans', size: 11, weight: 600 as const },
+          boxWidth: 12,
         },
       },
       tooltip: {
@@ -147,33 +143,33 @@ export const ExerciseProgressionChart: React.FC<ExerciseProgressionChartProps> =
         bodyColor: '#10b981',
         borderColor: '#23293b',
         borderWidth: 1,
-        padding: 12,
+        padding: 8,
       },
     },
     scales: {
       x: {
         grid: { color: 'rgba(255, 255, 255, 0.05)' },
-        ticks: { color: '#64748b', font: { family: 'JetBrains Mono' } },
+        ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } },
       },
       y: {
         grid: { color: 'rgba(255, 255, 255, 0.05)' },
-        ticks: { color: '#64748b', font: { family: 'JetBrains Mono' } },
+        ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } },
       },
     },
   };
 
   return (
-    <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="glass-card" style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
       {/* Exercise Selector Dropdown */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div>
-          <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-            Seleziona Esercizio per Analisi Sovraccarico:
+          <label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+            Seleziona Esercizio per Analisi:
           </label>
           <select
             value={selectedExerciseId}
             onChange={(e) => setSelectedExerciseId(e.target.value)}
-            style={{ maxWidth: 320, fontWeight: 700, color: '#fff' }}
+            style={{ fontWeight: 700, color: '#fff', fontSize: '0.84rem' }}
           >
             {availableExerciseIds.map((id) => (
               <option key={id} value={id}>
@@ -184,20 +180,21 @@ export const ExerciseProgressionChart: React.FC<ExerciseProgressionChartProps> =
         </div>
 
         {/* PR & Delta Badges */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {activePR && (
             <div style={{
               background: 'rgba(245, 158, 11, 0.12)',
               border: '1px solid rgba(245, 158, 11, 0.3)',
               borderRadius: 'var(--radius-sm)',
-              padding: '6px 12px',
-              textAlign: 'right',
+              padding: '4px 8px',
+              flex: 1,
+              minWidth: 120,
             }}>
-              <div style={{ fontSize: '0.68rem', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
-                <Trophy size={12} /> PR Massimale
+              <div style={{ fontSize: '0.64rem', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 3 }}>
+                <Trophy size={11} /> PR Massimale
               </div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', fontFamily: 'var(--font-mono)' }}>
-                {activePR.maxWeight} kg <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({activePR.maxWeightReps} rip)</span>
+              <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff', fontFamily: 'var(--font-mono)' }}>
+                {activePR.maxWeight}kg <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({activePR.maxWeightReps}r)</span>
               </div>
             </div>
           )}
@@ -207,13 +204,15 @@ export const ExerciseProgressionChart: React.FC<ExerciseProgressionChartProps> =
               background: delta1RM >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
               border: `1px solid ${delta1RM >= 0 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
               borderRadius: 'var(--radius-sm)',
-              padding: '6px 12px',
+              padding: '4px 8px',
+              flex: 1,
+              minWidth: 120,
             }}>
-              <div style={{ fontSize: '0.68rem', color: delta1RM >= 0 ? '#34d399' : '#f87171', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <TrendingUp size={12} /> Progressione 1RM
+              <div style={{ fontSize: '0.64rem', color: delta1RM >= 0 ? '#34d399' : '#f87171', display: 'flex', alignItems: 'center', gap: 3 }}>
+                <TrendingUp size={11} /> Progressione 1RM
               </div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', fontFamily: 'var(--font-mono)' }}>
-                {delta1RM >= 0 ? `+${delta1RM.toFixed(1)}` : delta1RM.toFixed(1)} kg ({deltaPercent}%)
+              <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff', fontFamily: 'var(--font-mono)' }}>
+                {delta1RM >= 0 ? `+${delta1RM.toFixed(1)}` : delta1RM.toFixed(1)}kg ({deltaPercent}%)
               </div>
             </div>
           )}
@@ -221,9 +220,9 @@ export const ExerciseProgressionChart: React.FC<ExerciseProgressionChartProps> =
       </div>
 
       {/* Chart Canvas */}
-      <div style={{ height: 280, width: '100%', position: 'relative' }}>
+      <div style={{ height: 220, width: '100%', position: 'relative' }}>
         {dataPoints.length === 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
             Nessuna serie registrata per questo esercizio.
           </div>
         ) : (

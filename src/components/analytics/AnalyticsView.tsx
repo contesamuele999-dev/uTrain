@@ -20,20 +20,20 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const prList = Object.values(prs);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0 }}>
-            Grafici & Sovraccarico Progressivo
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+            Grafici & Sovraccarico
           </h1>
-          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
-            Monitora l&apos;aumento della tua forza, 1RM stimati e distribuzione del volume
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0 }}>
+            Monitora forza, 1RM stimati e distribuzione volume
           </p>
         </div>
 
-        <button onClick={onOpenCoach} className="btn-ai" style={{ padding: '8px 14px', fontSize: '0.82rem' }}>
-          <Sparkles size={16} /> Chiedi al Coach AI
+        <button onClick={onOpenCoach} className="btn-ai" style={{ padding: '6px 12px', fontSize: '0.78rem' }}>
+          <Sparkles size={14} /> Chiedi al Coach
         </button>
       </div>
 
@@ -48,18 +48,18 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* All PRs Table */}
       {prList.length > 0 && (
-        <div className="glass-card" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-            <Trophy size={20} color="#fbbf24" />
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: '#fff' }}>
-              Tutti i Record Personali Registrati ({prList.length})
+        <div className="glass-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+            <Trophy size={16} color="#fbbf24" />
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: '#fff' }}>
+              Record Personali ({prList.length})
             </h3>
           </div>
 
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-            gap: 10,
+            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+            gap: 8,
           }}>
             {prList.map((pr) => (
               <div
@@ -68,27 +68,28 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   background: 'var(--bg-input)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: 'var(--radius-sm)',
-                  padding: '12px 14px',
+                  padding: '8px 10px',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  minWidth: 0,
                 }}
               >
-                <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', marginBottom: 2 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {pr.exerciseName}
                   </div>
-                  <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
-                    Max: <strong>{pr.maxWeight} kg</strong> × {pr.maxWeightReps} rip
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>
+                    Max: <strong>{pr.maxWeight}kg</strong> × {pr.maxWeightReps}r
                   </div>
                 </div>
 
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fbbf24', fontFamily: 'var(--font-mono)' }}>
-                    {pr.maxEstimated1RM} kg
+                <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: 6 }}>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fbbf24', fontFamily: 'var(--font-mono)' }}>
+                    {pr.maxEstimated1RM}k
                   </div>
-                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                    1RM Stimato
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>
+                    1RM
                   </div>
                 </div>
               </div>

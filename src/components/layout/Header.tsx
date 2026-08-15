@@ -29,74 +29,79 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header style={{
       borderBottom: '1px solid var(--border-subtle)',
-      background: 'rgba(9, 10, 15, 0.85)',
+      background: 'rgba(9, 10, 15, 0.92)',
       backdropFilter: 'blur(12px)',
       position: 'sticky',
       top: 0,
       zIndex: 40,
-      padding: '12px 16px',
+      padding: '8px 12px',
+      width: '100%',
     }}>
       <div style={{
-        maxWidth: 1200,
+        maxWidth: 1080,
         margin: '0 auto',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: 8,
       }}>
         {/* Brand Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexShrink: 0 }}>
           <div style={{
-            width: 38,
-            height: 38,
+            width: 32,
+            height: 32,
             borderRadius: 'var(--radius-sm)',
             background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 0 16px rgba(16, 185, 129, 0.4)',
+            boxShadow: '0 0 12px rgba(16, 185, 129, 0.35)',
+            flexShrink: 0,
           }}>
-            <Dumbbell size={22} color="#fff" strokeWidth={2.5} />
+            <Dumbbell size={18} color="#fff" strokeWidth={2.5} />
           </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
-                uTrain
-              </span>
-              <span style={{
-                fontSize: '0.65rem',
-                fontWeight: 700,
-                background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
-                color: '#fff',
-                padding: '2px 6px',
-                borderRadius: 'var(--radius-full)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-              }}>
-                AI Coach
-              </span>
-            </div>
-            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1 }}>
-              Tracker & Progressive Overload
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+            <span style={{
+              fontSize: '1.15rem',
+              fontWeight: 800,
+              letterSpacing: '-0.02em',
+              color: '#fff',
+              lineHeight: 1,
+            }}>
+              uTrain
+            </span>
+            <span style={{
+              fontSize: '0.6rem',
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
+              color: '#fff',
+              padding: '2px 5px',
+              borderRadius: 'var(--radius-full)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              lineHeight: 1,
+            }}>
+              AI
+            </span>
           </div>
         </div>
 
         {/* Quick Actions Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           {/* AI Coach Assistant Button */}
           <button
             onClick={onOpenCoach}
             className="btn-ai"
             style={{
-              padding: '8px 12px',
-              fontSize: '0.82rem',
+              padding: '6px 10px',
+              fontSize: '0.76rem',
               borderRadius: 'var(--radius-full)',
             }}
             title="Apri AI Coach Personale"
           >
-            <Bot size={17} />
-            <span style={{ display: 'inline' }}>AI Coach</span>
-            <Sparkles size={13} style={{ opacity: 0.8 }} />
+            <Bot size={15} />
+            <span className="hide-on-mobile">AI Coach</span>
+            <Sparkles size={12} style={{ opacity: 0.8 }} />
           </button>
 
           {/* Settings button */}
@@ -104,13 +109,13 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={onOpenSettings}
             className="btn-ghost"
             style={{
-              padding: '8px',
+              padding: '6px',
               borderRadius: 'var(--radius-full)',
-              position: 'relative',
+              color: 'var(--text-secondary)',
             }}
             title="Impostazioni"
           >
-            <SettingsIcon size={19} />
+            <SettingsIcon size={18} />
           </button>
 
           {/* User Account / Profile Button */}
@@ -118,21 +123,22 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onOpenProfile}
               style={{
-                width: 36,
-                height: 36,
+                width: 32,
+                height: 32,
                 borderRadius: 'var(--radius-full)',
                 background: user.avatarColor || 'linear-gradient(135deg, #10b981, #059669)',
                 color: '#fff',
-                border: '2px solid rgba(255, 255, 255, 0.2)',
+                border: '1.5px solid rgba(255, 255, 255, 0.25)',
                 fontWeight: 800,
-                fontSize: '0.82rem',
+                fontSize: '0.75rem',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 0 10px rgba(16, 185, 129, 0.25)',
+                boxShadow: '0 0 8px rgba(16, 185, 129, 0.25)',
+                flexShrink: 0,
               }}
-              title={`Account: ${user.name} (${user.email})`}
+              title={`Account: ${user.name}`}
             >
               {initials}
             </button>
@@ -140,9 +146,9 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onOpenAuth}
               className="btn-secondary"
-              style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-full)' }}
+              style={{ padding: '5px 10px', fontSize: '0.76rem', borderRadius: 'var(--radius-full)' }}
             >
-              <LogIn size={15} /> Accedi
+              <LogIn size={13} /> Accedi
             </button>
           )}
         </div>

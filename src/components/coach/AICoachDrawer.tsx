@@ -31,8 +31,7 @@ export const AICoachDrawer: React.FC<AICoachDrawerProps> = ({
     {
       id: 'welcome',
       role: 'model',
-      text: `Ciao ${settings.userName || 'Campione'}! Sono il tuo AI Coach personale di uTrain. 
-Come posso aiutarti oggi? Posso analizzare la tua progressione di carico, suggerirti come superare uno stallo, spiegarti la tecnica ideale o darti consigli sul recupero.`,
+      text: `Ciao ${settings.userName || 'Campione'}! Sono il tuo AI Coach personale uTrain. Come posso aiutarti oggi? Posso consigliarti sui carichi, stalli, tecnica o alimentazione.`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -54,10 +53,9 @@ Come posso aiutarti oggi? Posso analizzare la tua progressione di carico, sugger
   if (!isOpen) return null;
 
   const quickPrompts = [
-    'Come superare uno stallo sulla Panca Piana?',
-    'Quando dovrei programmare una settimana di scarico (deload)?',
-    'Qual è il range di ripetizioni ideale per l\'ipertrofia?',
-    'Come impostare il timing dei pasti pre e post allenamento?',
+    'Come superare uno stallo sulla Panca?',
+    'Quando programmare una settimana di deload?',
+    'Qual è il range di ripetizioni per massa?',
   ];
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -76,7 +74,6 @@ Come posso aiutarti oggi? Posso analizzare la tua progressione di carico, sugger
     setIsLoading(true);
 
     try {
-      // Gather context
       const sessions = StorageService.getSessions();
       const prs = StorageService.getPRs();
       const activeRoutine = StorageService.getRoutines().find((r) => r.id === settings.activeRoutineId);
@@ -125,57 +122,56 @@ Come posso aiutarti oggi? Posso analizzare la tua progressione di carico, sugger
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '16px',
+      padding: '8px',
     }}>
       <div
         className="glass-card"
         style={{
           width: '100%',
-          maxWidth: 620,
-          height: '85vh',
-          maxHeight: 750,
+          maxWidth: 560,
+          height: '88vh',
+          maxHeight: 700,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: 'var(--radius-md)',
           border: '1px solid rgba(139, 92, 246, 0.35)',
-          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.6), 0 0 24px rgba(139, 92, 246, 0.2)',
         }}
       >
         {/* Header */}
         <div style={{
-          padding: '16px 20px',
+          padding: '10px 14px',
           borderBottom: '1px solid var(--border-subtle)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(18, 21, 30, 0.95) 100%)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{
-              width: 36,
-              height: 36,
+              width: 30,
+              height: 30,
               borderRadius: 'var(--radius-full)',
               background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 12px rgba(139, 92, 246, 0.4)',
+              flexShrink: 0,
             }}>
-              <Bot size={20} color="#fff" />
+              <Bot size={16} color="#fff" />
             </div>
             <div>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: '#fff' }}>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: '#fff' }}>
                 AI Coach Personale
               </h3>
-              <p style={{ fontSize: '0.72rem', color: '#c4b5fd', margin: 0 }}>
-                Powered by Google Gemini (Free Tier Integrato)
+              <p style={{ fontSize: '0.68rem', color: '#c4b5fd', margin: 0 }}>
+                Powered by Google Gemini Flash Lite
               </p>
             </div>
           </div>
 
-          <button onClick={onClose} className="btn-ghost" style={{ padding: 6 }}>
-            <X size={20} />
+          <button onClick={onClose} className="btn-ghost" style={{ padding: 4 }}>
+            <X size={18} />
           </button>
         </div>
 
@@ -183,10 +179,10 @@ Come posso aiutarti oggi? Posso analizzare la tua progressione di carico, sugger
         <div style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '16px',
+          padding: '12px 14px',
           display: 'flex',
           flexDirection: 'column',
-          gap: 12,
+          gap: 10,
         }}>
           {messages.map((msg) => {
             const isUser = msg.role === 'user';
@@ -198,26 +194,26 @@ Come posso aiutarti oggi? Posso analizzare la tua progressione di carico, sugger
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: isUser ? 'flex-end' : 'flex-start',
-                  gap: 4,
+                  gap: 2,
                 }}
               >
                 <div style={{
-                  maxWidth: '85%',
-                  padding: '12px 16px',
-                  borderRadius: isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                  maxWidth: '90%',
+                  padding: '8px 12px',
+                  borderRadius: isUser ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
                   background: isUser
                     ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
                     : 'var(--bg-input)',
                   color: isUser ? '#fff' : 'var(--text-primary)',
-                  fontSize: '0.88rem',
-                  lineHeight: 1.5,
+                  fontSize: '0.84rem',
+                  lineHeight: 1.4,
                   border: isUser ? 'none' : '1px solid var(--border-subtle)',
                   whiteSpace: 'pre-wrap',
                 }}>
                   {msg.text}
                 </div>
 
-                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', padding: '0 4px' }}>
+                <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', padding: '0 2px' }}>
                   {msg.timestamp}
                 </span>
               </div>
@@ -225,9 +221,9 @@ Come posso aiutarti oggi? Posso analizzare la tua progressione di carico, sugger
           })}
 
           {isLoading && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#c4b5fd', fontSize: '0.82rem', padding: '8px' }}>
-              <Sparkles size={16} style={{ animation: 'spin 1.5s linear infinite' }} />
-              Il Coach sta elaborando la risposta scientifica...
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c4b5fd', fontSize: '0.78rem', padding: '6px' }}>
+              <Sparkles size={14} style={{ animation: 'spin 1.5s linear infinite' }} />
+              Il Coach sta elaborando...
             </div>
           )}
 
@@ -236,10 +232,10 @@ Come posso aiutarti oggi? Posso analizzare la tua progressione di carico, sugger
 
         {/* Quick Prompts Carousel */}
         <div style={{
-          padding: '8px 16px',
+          padding: '6px 12px',
           borderTop: '1px solid var(--border-subtle)',
           display: 'flex',
-          gap: 6,
+          gap: 4,
           overflowX: 'auto',
           background: 'rgba(9, 10, 15, 0.4)',
         }}>
@@ -253,8 +249,8 @@ Come posso aiutarti oggi? Posso analizzare la tua progressione di carico, sugger
                 background: 'var(--bg-input)',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: 'var(--radius-full)',
-                padding: '4px 10px',
-                fontSize: '0.74rem',
+                padding: '3px 8px',
+                fontSize: '0.7rem',
                 color: 'var(--text-secondary)',
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
@@ -273,29 +269,29 @@ Come posso aiutarti oggi? Posso analizzare la tua progressione di carico, sugger
             handleSendMessage();
           }}
           style={{
-            padding: '12px 16px',
+            padding: '8px 12px',
             borderTop: '1px solid var(--border-subtle)',
             display: 'flex',
-            gap: 8,
+            gap: 6,
             background: 'var(--bg-card)',
           }}
         >
           <input
             type="text"
-            placeholder="Chiedi qualsiasi cosa su allenamento, carichi, tecnica..."
+            placeholder="Chiedi su carichi, tecnica, recupero..."
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             disabled={isLoading}
-            style={{ flex: 1 }}
+            style={{ flex: 1, fontSize: '0.84rem', padding: '6px 10px' }}
           />
 
           <button
             type="submit"
             disabled={!inputText.trim() || isLoading}
             className="btn-ai"
-            style={{ padding: '0 16px' }}
+            style={{ padding: '0 12px' }}
           >
-            <Send size={18} />
+            <Send size={15} />
           </button>
         </form>
       </div>

@@ -2,26 +2,29 @@ import React, { useState } from 'react';
 import {
   Sparkles,
   X,
+  Clock,
+  Save,
   CheckCircle2,
   AlertCircle,
-  Clock,
   ShieldAlert,
-  Save,
 } from 'lucide-react';
 import { GeminiService } from '../../services/gemini';
 import { StorageService } from '../../services/storage';
 import type {
-  AIRoutineGeneratorRequest,
-  AIRoutineGeneratorResponse,
-} from '../../types/gemini';
-import type { Routine, EquipmentType, MuscleGroup } from '../../types/workout';
-import { MUSCLE_GROUP_LABELS, EQUIPMENT_LABELS } from '../../utils/calculations';
+  Routine,
+  MuscleGroup,
+  EquipmentType,
+} from '../../types/workout';
+import {
+  MUSCLE_GROUP_LABELS,
+  EQUIPMENT_LABELS,
+} from '../../utils/calculations';
 
 interface AIRoutineGeneratorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onRoutineCreated: (routine: Routine) => void;
-  onOpenSettings: () => void;
+  onRoutineCreated: (newRoutine: Routine) => void;
+  onOpenSettings?: () => void;
 }
 
 export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = ({
@@ -31,21 +34,41 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
 }) => {
   const settings = StorageService.getSettings();
 
-  // Form State
   const [goal, setGoal] = useState<'hypertrophy' | 'strength' | 'endurance' | 'fat_loss' | 'general_fitness'>('hypertrophy');
   const [level, setLevel] = useState<'beginner' | 'intermediate' | 'advanced'>(settings.experienceLevel || 'intermediate');
-  const [daysPerWeek, setDaysPerWeek] = useState<number>(4);
-  const [splitPreference, setSplitPreference] = useState<'auto' | 'ppl' | 'upper_lower' | 'full_body' | 'bro_split'>('auto');
+  const [daysPerWeek, setDaysPerWeek] = useState<number>(3);
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
-  const [equipment, setEquipment] = useState<EquipmentType[]>(['barbell', 'dumbbell', 'cable', 'machine', 'bodyweight']);
+  const [equipment, setEquipment] = useState<EquipmentType[]>([
+    'barbell',
+    'dumbbell',
+    'cable',
+    'machine',
+    'bodyweight',
+  ]);
   const [focusMuscles, setFocusMuscles] = useState<MuscleGroup[]>([]);
   const [injuries, setInjuries] = useState<string>('');
   const [userNotes, setUserNotes] = useState<string>('');
+  const [splitPreference, setSplitPreference] = useState<'auto' | 'ppl' | 'upper_lower' | 'full_body' | 'bro_split'>('auto');
 
-  // Generation State
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [generatedResult, setGeneratedResult] = useState<AIRoutineGeneratorResponse | null>(null);
+  const [generatedResult, setGeneratedResult] = useState<{
+    title: string;
+    description: string;
+    goalExplanation: string;
+    days: Array<{
+      dayName: string;
+      exercises: Array<{
+        name: string;
+        muscleGroup: MuscleGroup;
+        sets: number;
+        repsMin: number;
+        repsMax: number;
+        restSeconds: number;
+        notes?: string;
+      }>;
+    }>;
+  } | null>(null);
 
   if (!isOpen) return null;
 
@@ -59,12 +82,12 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
     }
   };
 
-  const toggleMuscleFocus = (mg: MuscleGroup) => {
-    if (focusMuscles.includes(mg)) {
-      setFocusMuscles(focusMuscles.filter((m) => m !== mg));
+  const toggleMuscleFocus = (muscle: MuscleGroup) => {
+    if (focusMuscles.includes(muscle)) {
+      setFocusMuscles(focusMuscles.filter((m) => m !== muscle));
     } else {
       if (focusMuscles.length < 3) {
-        setFocusMuscles([...focusMuscles, mg]);
+        setFocusMuscles([...focusMuscles, muscle]);
       }
     }
   };
@@ -72,26 +95,24 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
   const handleGenerate = async () => {
     setIsGenerating(true);
     setErrorMessage(null);
-    setGeneratedResult(null);
-
-    const requestPayload: AIRoutineGeneratorRequest = {
-      goal,
-      level,
-      daysPerWeek,
-      splitPreference,
-      equipment,
-      sessionDurationMinutes: durationMinutes,
-      focusMuscles: focusMuscles.length > 0 ? focusMuscles : undefined,
-      injuriesOrLimitations: injuries.trim() || undefined,
-      userNotes: userNotes.trim() || undefined,
-    };
 
     try {
-      const response = await GeminiService.generateWorkoutRoutine(requestPayload);
-      setGeneratedResult(response);
+      const generated = await GeminiService.generateWorkoutRoutine({
+        goal,
+        level,
+        daysPerWeek,
+        sessionDurationMinutes: durationMinutes,
+        equipment,
+        focusMuscles: focusMuscles.length > 0 ? focusMuscles : undefined,
+        injuriesOrLimitations: injuries.trim() || undefined,
+        userNotes: userNotes.trim() || undefined,
+        splitPreference,
+      });
+
+      setGeneratedResult(generated);
     } catch (e: unknown) {
       const err = e as Error;
-      setErrorMessage(err.message || 'Errore durante la generazione della scheda. Riprova.');
+      setErrorMessage(err.message || 'Errore durante la generazione della scheda con Gemini.');
     } finally {
       setIsGenerating(false);
     }
@@ -101,27 +122,26 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
     if (!generatedResult) return;
 
     const newRoutine: Routine = {
-      id: `ai-routine-${Date.now()}`,
-      title: generatedResult.title || 'Scheda Personalizzata AI',
-      description: generatedResult.description || 'Creata su misura da Gemini AI Coach',
+      id: `routine-ai-${Date.now()}`,
+      title: generatedResult.title,
+      description: generatedResult.description,
       goal,
       level,
+      isAiGenerated: true,
+      aiPromptSummary: `${daysPerWeek}gg/settimana • ${goal} • ${durationMinutes}min`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      isAiGenerated: true,
-      aiPromptSummary: `${daysPerWeek}gg/sett, ${goal}, ${level}`,
-      days: generatedResult.days.map((day, dIdx) => ({
-        id: `day-${dIdx + 1}-${Date.now()}`,
-        name: day.dayName,
-        exercises: day.exercises.map((ex, eIdx) => ({
-          id: `ex-inst-${dIdx}-${eIdx}-${Date.now()}`,
-          exerciseId: `ai-ex-${ex.name.toLowerCase().replace(/\s+/g, '-')}`,
+      days: generatedResult.days.map((d, dIdx) => ({
+        id: `day-ai-${dIdx + 1}-${Date.now()}`,
+        name: d.dayName,
+        exercises: d.exercises.map((ex, eIdx) => ({
+          id: `ex-ai-${eIdx + 1}-${Date.now()}`,
+          exerciseId: `custom-ai-ex-${eIdx}`,
           name: ex.name,
           muscleGroup: ex.muscleGroup,
           targetSets: ex.sets || 3,
           targetRepsMin: ex.repsMin || 8,
-          targetRepsMax: ex.repsMax || 10,
-          targetRpe: ex.targetRpe || 8,
+          targetRepsMax: ex.repsMax || 12,
           targetRestSeconds: ex.restSeconds || 90,
           notes: ex.notes,
         })),
@@ -167,73 +187,73 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '16px',
+      padding: '8px',
     }}>
       <div
         className="glass-card"
         style={{
           width: '100%',
-          maxWidth: 680,
-          maxHeight: '90vh',
+          maxWidth: 640,
+          maxHeight: '92vh',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          borderRadius: 'var(--radius-lg)',
-          border: '1px solid rgba(139, 92, 246, 0.3)',
-          boxShadow: '0 12px 48px rgba(0, 0, 0, 0.6), 0 0 24px rgba(139, 92, 246, 0.2)',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid rgba(139, 92, 246, 0.35)',
         }}
       >
         {/* Header */}
         <div style={{
-          padding: '18px 20px',
+          padding: '10px 14px',
           borderBottom: '1px solid var(--border-subtle)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(18, 21, 30, 0.9) 100%)',
+          background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(18, 21, 30, 0.95) 100%)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{
-              width: 36,
-              height: 36,
+              width: 30,
+              height: 30,
               borderRadius: 'var(--radius-sm)',
               background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              flexShrink: 0,
             }}>
-              <Sparkles size={20} color="#fff" />
+              <Sparkles size={16} color="#fff" />
             </div>
             <div>
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: '#fff' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: '#fff' }}>
                 Generatore Schede AI Gemini
               </h2>
-              <p style={{ fontSize: '0.75rem', color: '#c4b5fd', margin: 0 }}>
-                Programmazione scientifica personalizzata in pochi istanti
+              <p style={{ fontSize: '0.68rem', color: '#c4b5fd', margin: 0 }}>
+                Programmazione scientifica su misura
               </p>
             </div>
           </div>
 
-          <button onClick={onClose} className="btn-ghost" style={{ padding: 6 }}>
-            <X size={20} />
+          <button onClick={onClose} className="btn-ghost" style={{ padding: 4 }}>
+            <X size={18} />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ padding: '12px 14px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {errorMessage && (
             <div style={{
               background: 'rgba(239, 68, 68, 0.15)',
               border: '1px solid rgba(239, 68, 68, 0.4)',
               borderRadius: 'var(--radius-sm)',
-              padding: '12px 14px',
+              padding: '8px 10px',
               color: '#fca5a5',
-              fontSize: '0.85rem',
+              fontSize: '0.78rem',
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
+              gap: 6,
             }}>
-              <AlertCircle size={18} /> {errorMessage}
+              <AlertCircle size={15} /> {errorMessage}
             </div>
           )}
 
@@ -241,30 +261,32 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
             /* WIZARD FORM */
             <>
               {/* 1. Obiettivo & Livello */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
                 <div>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>
+                  <label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 2, display: 'block' }}>
                     Obiettivo Primario:
                   </label>
                   <select
                     value={goal}
                     onChange={(e) => setGoal(e.target.value as 'hypertrophy' | 'strength' | 'endurance' | 'fat_loss' | 'general_fitness')}
+                    style={{ fontSize: '0.84rem' }}
                   >
-                    <option value="hypertrophy">Ipertrofia (Massa Muscolare)</option>
-                    <option value="strength">Forza & Carichi Massimali</option>
-                    <option value="fat_loss">Definizione / Ricomposizione Corporea</option>
-                    <option value="endurance">Resistenza & Conditioning</option>
-                    <option value="general_fitness">Benessere & Tono Generale</option>
+                    <option value="hypertrophy">Ipertrofia (Massa)</option>
+                    <option value="strength">Forza & Carichi</option>
+                    <option value="fat_loss">Definizione</option>
+                    <option value="endurance">Resistenza</option>
+                    <option value="general_fitness">Tono Generale</option>
                   </select>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>
-                    Livello di Esperienza:
+                  <label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 2, display: 'block' }}>
+                    Livello Esperienza:
                   </label>
                   <select
                     value={level}
                     onChange={(e) => setLevel(e.target.value as 'beginner' | 'intermediate' | 'advanced')}
+                    style={{ fontSize: '0.84rem' }}
                   >
                     <option value="beginner">Principiante (&lt; 1 anno)</option>
                     <option value="intermediate">Intermedio (1 - 3 anni)</option>
@@ -274,10 +296,10 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
               </div>
 
               {/* 2. Frequenza & Durata */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
                 <div>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>
-                    Giorni a settimana: <strong style={{ color: 'var(--accent-primary)' }}>{daysPerWeek} giorni</strong>
+                  <label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 2, display: 'block' }}>
+                    Frequenza: <strong style={{ color: 'var(--accent-primary)' }}>{daysPerWeek} gg/sett</strong>
                   </label>
                   <input
                     type="range"
@@ -288,53 +310,48 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
                     onChange={(e) => setDaysPerWeek(parseInt(e.target.value))}
                     style={{ accentColor: 'var(--accent-primary)' }}
                   />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    <span>2 gg</span>
-                    <span>3 gg</span>
-                    <span>4 gg</span>
-                    <span>5 gg</span>
-                    <span>6 gg</span>
-                  </div>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>
-                    Durata Media Sessione:
+                  <label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 2, display: 'block' }}>
+                    Durata Sessione:
                   </label>
                   <select
                     value={durationMinutes}
                     onChange={(e) => setDurationMinutes(parseInt(e.target.value))}
+                    style={{ fontSize: '0.84rem' }}
                   >
-                    <option value="45">45 minuti (Espresso / Alto Impatto)</option>
+                    <option value="45">45 minuti (Espresso)</option>
                     <option value="60">60 minuti (Standard)</option>
                     <option value="75">75 minuti (Completo)</option>
-                    <option value="90">90 minuti (Volume Alto / Powerlifting)</option>
+                    <option value="90">90 minuti (Power)</option>
                   </select>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>
-                    Split Preferito:
+                  <label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 2, display: 'block' }}>
+                    Split:
                   </label>
                   <select
                     value={splitPreference}
                     onChange={(e) => setSplitPreference(e.target.value as 'auto' | 'ppl' | 'upper_lower' | 'full_body' | 'bro_split')}
+                    style={{ fontSize: '0.84rem' }}
                   >
-                    <option value="auto">Automatico (Consigliato dall&apos;AI)</option>
+                    <option value="auto">Auto (Consigliato AI)</option>
                     <option value="ppl">Push - Pull - Legs</option>
                     <option value="upper_lower">Upper - Lower</option>
                     <option value="full_body">Full Body</option>
-                    <option value="bro_split">Mono-frequenza (Bro Split)</option>
+                    <option value="bro_split">Bro Split</option>
                   </select>
                 </div>
               </div>
 
               {/* 3. Attrezzatura Disponibile */}
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>
-                  Attrezzatura a disposizione:
+                <label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>
+                  Attrezzatura disponibile:
                 </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {allEquipments.map((eq) => {
                     const isSelected = equipment.includes(eq);
                     return (
@@ -347,16 +364,16 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
                           color: isSelected ? '#34d399' : 'var(--text-secondary)',
                           border: `1px solid ${isSelected ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
                           borderRadius: 'var(--radius-full)',
-                          padding: '6px 12px',
-                          fontSize: '0.78rem',
+                          padding: '4px 8px',
+                          fontSize: '0.72rem',
                           fontWeight: isSelected ? 700 : 500,
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 6,
+                          gap: 4,
                         }}
                       >
-                        {isSelected && <CheckCircle2 size={12} />}
+                        {isSelected && <CheckCircle2 size={10} />}
                         {EQUIPMENT_LABELS[eq] || eq}
                       </button>
                     );
@@ -366,10 +383,10 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
 
               {/* 4. Focus Muscolare (Opzionale) */}
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>
-                  Focus Muscolare Speciale (seleziona fino a 3):
+                <label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>
+                  Focus Muscolare (max 3):
                 </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {mainMuscles.map((mg) => {
                     const isSelected = focusMuscles.includes(mg);
                     return (
@@ -382,8 +399,8 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
                           color: isSelected ? '#c4b5fd' : 'var(--text-secondary)',
                           border: `1px solid ${isSelected ? 'var(--accent-purple)' : 'var(--border-subtle)'}`,
                           borderRadius: 'var(--radius-full)',
-                          padding: '5px 10px',
-                          fontSize: '0.76rem',
+                          padding: '3px 8px',
+                          fontSize: '0.72rem',
                           fontWeight: isSelected ? 700 : 500,
                           cursor: 'pointer',
                         }}
@@ -396,67 +413,69 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
               </div>
 
               {/* 5. Infortuni & Note */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
                 <div>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <ShieldAlert size={14} color="#f59e0b" /> Infortuni o limitazioni articolari:
+                  <label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <ShieldAlert size={12} color="#f59e0b" /> Limitazioni articolari:
                   </label>
                   <input
                     type="text"
-                    placeholder="Es. Dolore alla cuffia dei rotatori spalla destra, no squat pesanti"
+                    placeholder="Es. No squat pesanti"
                     value={injuries}
                     onChange={(e) => setInjuries(e.target.value)}
+                    style={{ fontSize: '0.82rem' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>
-                    Note o preferenze speciali:
+                  <label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 2, display: 'block' }}>
+                    Note speciali:
                   </label>
                   <input
                     type="text"
-                    placeholder="Es. Includi trazioni zavorrate, amo serie ad alte ripetizioni"
+                    placeholder="Es. Includi trazioni"
                     value={userNotes}
                     onChange={(e) => setUserNotes(e.target.value)}
+                    style={{ fontSize: '0.82rem' }}
                   />
                 </div>
               </div>
             </>
           ) : (
             /* PREVIEW GENERATED ROUTINE */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{
                 background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(18, 21, 30, 0.8) 100%)',
                 border: '1px solid rgba(16, 185, 129, 0.3)',
-                borderRadius: 'var(--radius-md)',
-                padding: '16px',
+                borderRadius: 'var(--radius-sm)',
+                padding: '10px 12px',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <span className="chip chip-green">Scheda Generata con Successo</span>
-                  <span className="chip chip-purple">{generatedResult.days.length} Giorni</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <span className="chip chip-green" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>Generata</span>
+                  <span className="chip chip-purple" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>{generatedResult.days.length} Giorni</span>
                 </div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', margin: '4px 0' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', margin: '2px 0' }}>
                   {generatedResult.title}
                 </h3>
-                <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', margin: 0 }}>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0 }}>
                   {generatedResult.description}
                 </p>
                 {generatedResult.goalExplanation && (
                   <div style={{
-                    marginTop: 10,
-                    padding: '8px 12px',
+                    marginTop: 6,
+                    padding: '6px 8px',
                     background: 'rgba(255, 255, 255, 0.04)',
                     borderRadius: 'var(--radius-sm)',
-                    fontSize: '0.8rem',
+                    fontSize: '0.74rem',
                     color: '#c4b5fd',
                   }}>
-                    💡 <strong>Strategia AI:</strong> {generatedResult.goalExplanation}
+                    💡 <strong>Strategia:</strong> {generatedResult.goalExplanation}
                   </div>
                 )}
               </div>
 
               {/* Days breakdown */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {generatedResult.days.map((day, dIdx) => (
                   <div
                     key={dIdx}
@@ -464,14 +483,14 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
                       background: 'var(--bg-input)',
                       border: '1px solid var(--border-subtle)',
                       borderRadius: 'var(--radius-sm)',
-                      padding: '12px 14px',
+                      padding: '8px 10px',
                     }}
                   >
-                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent-primary)', marginBottom: 8 }}>
+                    <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--accent-primary)', marginBottom: 4 }}>
                       {day.dayName}
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {day.exercises.map((ex, eIdx) => (
                         <div
                           key={eIdx}
@@ -479,26 +498,21 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            padding: '6px 8px',
+                            padding: '4px 6px',
                             background: 'rgba(0, 0, 0, 0.2)',
                             borderRadius: 'var(--radius-sm)',
-                            fontSize: '0.84rem',
+                            fontSize: '0.76rem',
                           }}
                         >
                           <div>
                             <strong style={{ color: '#fff' }}>{ex.name}</strong>
-                            {ex.notes && (
-                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                {ex.notes}
-                              </div>
-                            )}
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#fbbf24' }}>
-                              {ex.sets} × {ex.repsMin}-{ex.repsMax}
+                              {ex.sets}×{ex.repsMin}-{ex.repsMax}
                             </span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <Clock size={12} /> {ex.restSeconds}s
+                            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <Clock size={10} /> {ex.restSeconds}s
                             </span>
                           </div>
                         </div>
@@ -513,15 +527,15 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
 
         {/* Modal Footer Actions */}
         <div style={{
-          padding: '14px 20px',
+          padding: '10px 14px',
           borderTop: '1px solid var(--border-subtle)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-end',
-          gap: 10,
+          gap: 8,
           background: 'rgba(9, 10, 15, 0.95)',
         }}>
-          <button onClick={onClose} className="btn-secondary" style={{ padding: '10px 16px' }}>
+          <button onClick={onClose} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.78rem' }}>
             Chiudi
           </button>
 
@@ -530,32 +544,34 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
               onClick={handleGenerate}
               disabled={isGenerating}
               className="btn-ai"
-              style={{ padding: '10px 22px' }}
+              style={{ padding: '7px 14px', fontSize: '0.8rem' }}
             >
               {isGenerating ? (
                 <>
-                  <Sparkles size={18} style={{ animation: 'spin 1.5s linear infinite' }} />
-                  Generazione in corso...
+                  <Sparkles size={14} style={{ animation: 'spin 1.5s linear infinite' }} />
+                  Elaborazione...
                 </>
               ) : (
                 <>
-                  <Sparkles size={18} /> Genera Scheda con Gemini AI
+                  <Sparkles size={14} /> Genera Scheda AI
                 </>
               )}
             </button>
           ) : (
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
               <button
                 onClick={() => setGeneratedResult(null)}
                 className="btn-secondary"
+                style={{ padding: '6px 10px', fontSize: '0.78rem' }}
               >
-                Modifica Parametri
+                Parametri
               </button>
               <button
                 onClick={handleSaveAndApply}
                 className="btn-primary"
+                style={{ padding: '6px 12px', fontSize: '0.78rem' }}
               >
-                <Save size={18} /> Salva & Imposta come Attiva
+                <Save size={14} /> Salva & Attiva
               </button>
             </div>
           )}

@@ -53,63 +53,65 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const recentSessions = sessions.slice(0, 3);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
       {/* Active Workout Resume Banner */}
       {activeWorkoutDraft && (
         <div
           onClick={onResumeActiveWorkout}
           className="glass-card animate-pulse-glow"
           style={{
-            padding: '14px 18px',
+            padding: '10px 14px',
             background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(18, 21, 30, 0.95) 100%)',
             border: '1px solid var(--accent-primary)',
-            borderRadius: 'var(--radius-md)',
+            borderRadius: 'var(--radius-sm)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            gap: 8,
             cursor: 'pointer',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             <div style={{
-              width: 12,
-              height: 12,
+              width: 10,
+              height: 10,
               borderRadius: '50%',
               background: 'var(--accent-primary)',
-              boxShadow: '0 0 10px var(--accent-primary)',
+              boxShadow: '0 0 8px var(--accent-primary)',
+              flexShrink: 0,
             }} />
-            <div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff' }}>
-                Sessione in corso: {activeWorkoutDraft.routineTitle || 'Allenamento'}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                Sessione attiva: {activeWorkoutDraft.routineTitle || 'Allenamento'}
               </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--accent-primary)' }}>
-                Tocca qui per riprendere la registrazione dei carichi
+              <div style={{ fontSize: '0.72rem', color: 'var(--accent-primary)' }}>
+                Tocca per riprendere i carichi
               </div>
             </div>
           </div>
-          <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>
+          <button className="btn-primary" style={{ padding: '5px 10px', fontSize: '0.76rem', flexShrink: 0 }}>
             Riprendi
           </button>
         </div>
       )}
 
       {/* Greeting Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff', margin: 0 }}>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff', margin: 0 }}>
             Ciao, {settings.userName || 'Atleta'}! 🔥
           </h1>
-          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
-            Pronto a spingere oltre i tuoi limiti oggi?
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
+            Pronto a spingere oltre i tuoi limiti?
           </p>
         </div>
 
         <button
           onClick={onOpenAIGenerator}
           className="btn-ai"
-          style={{ padding: '8px 14px', fontSize: '0.82rem' }}
+          style={{ padding: '6px 12px', fontSize: '0.78rem' }}
         >
-          <Sparkles size={16} /> Nuova Scheda AI
+          <Sparkles size={14} /> Nuova Scheda AI
         </button>
       </div>
 
@@ -129,27 +131,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* PR Showcase */}
       {topPRs.length > 0 && (
-        <div className="glass-card" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Trophy size={18} color="#fbbf24" />
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#fff' }}>
-                Migliori Record Personali (PR)
+        <div className="glass-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Trophy size={16} color="#fbbf24" />
+              <h3 style={{ fontSize: '0.92rem', fontWeight: 700, margin: 0, color: '#fff' }}>
+                Record Personali (PR)
               </h3>
             </div>
             <button
               onClick={onOpenAnalytics}
               className="btn-ghost"
-              style={{ fontSize: '0.78rem', padding: '4px 8px' }}
+              style={{ fontSize: '0.74rem', padding: '2px 6px' }}
             >
-              Vedi grafici <ChevronRight size={14} />
+              Grafici <ChevronRight size={13} />
             </button>
           </div>
 
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 10,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: 8,
           }}>
             {topPRs.map((pr) => (
               <div
@@ -158,32 +160,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   background: 'var(--bg-input)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: 'var(--radius-sm)',
-                  padding: '10px 14px',
+                  padding: '8px 10px',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  minWidth: 0,
                 }}
               >
-                <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {pr.exerciseName}
                   </div>
-                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                    {pr.maxWeightReps} rip con {pr.maxWeight} kg
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                    {pr.maxWeightReps}r × {pr.maxWeight}kg
                   </div>
                 </div>
 
-                <div style={{ textAlign: 'right' }}>
+                <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: 6 }}>
                   <div style={{
-                    fontSize: '1rem',
+                    fontSize: '0.95rem',
                     fontWeight: 800,
                     color: '#fbbf24',
                     fontFamily: 'var(--font-mono)',
+                    lineHeight: 1,
                   }}>
-                    {pr.maxEstimated1RM} kg
+                    {pr.maxEstimated1RM}k
                   </div>
-                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                    1RM Stimato
+                  <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>
+                    1RM
                   </div>
                 </div>
               </div>
@@ -194,24 +198,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Recent Sessions History Preview */}
       {recentSessions.length > 0 && (
-        <div className="glass-card" style={{ padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <HistoryIcon size={18} color="#60a5fa" />
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#fff' }}>
-                Ultime Sessioni Completate
+        <div className="glass-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <HistoryIcon size={16} color="#60a5fa" />
+              <h3 style={{ fontSize: '0.92rem', fontWeight: 700, margin: 0, color: '#fff' }}>
+                Ultime Sessioni
               </h3>
             </div>
             <button
               onClick={onOpenHistory}
               className="btn-ghost"
-              style={{ fontSize: '0.78rem', padding: '4px 8px' }}
+              style={{ fontSize: '0.74rem', padding: '2px 6px' }}
             >
-              Tutto lo storico <ChevronRight size={14} />
+              Tutto <ChevronRight size={13} />
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {recentSessions.map((session) => (
               <div
                 key={session.id}
@@ -219,36 +223,35 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   background: 'var(--bg-input)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: 'var(--radius-sm)',
-                  padding: '12px 14px',
+                  padding: '10px 12px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  flexWrap: 'wrap',
                   gap: 8,
                 }}
               >
-                <div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {session.routineTitle || 'Allenamento Libero'}
                   </div>
-                  <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
-                    {session.dayName || formatDateIt(session.startTime)} • {session.exercises.length} esercizi • {session.totalSets} serie
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                    {session.dayName || formatDateIt(session.startTime)} • {session.exercises.length} es. • {session.totalSets} serie
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>
-                      {session.totalVolumeKg} kg
+                    <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>
+                      {session.totalVolumeKg}kg
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
                       {formatDuration(session.durationSeconds)}
                     </div>
                   </div>
 
                   {session.prsAchieved && session.prsAchieved.length > 0 && (
-                    <span className="chip chip-amber" title={`${session.prsAchieved.length} nuovi PR`}>
-                      <Flame size={12} /> {session.prsAchieved.length} PR
+                    <span className="chip chip-amber" style={{ padding: '2px 6px', fontSize: '0.68rem' }}>
+                      <Flame size={10} /> {session.prsAchieved.length} PR
                     </span>
                   )}
                 </div>

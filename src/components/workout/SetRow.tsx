@@ -47,48 +47,51 @@ export const SetRow: React.FC<SetRowProps> = ({
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '40px 1.1fr 1.1fr 50px 32px',
+        gridTemplateColumns: '26px 1fr 1fr 34px 22px',
         alignItems: 'center',
-        gap: 8,
-        padding: '8px 10px',
+        gap: 4,
+        padding: '6px',
         background: set.completed ? 'rgba(16, 185, 129, 0.08)' : 'var(--bg-input)',
         border: `1px solid ${set.completed ? 'rgba(16, 185, 129, 0.3)' : 'var(--border-subtle)'}`,
         borderRadius: 'var(--radius-sm)',
         transition: 'all 0.15s ease',
+        width: '100%',
+        minWidth: 0,
       }}
     >
       {/* Set Number / Type Button */}
       <button
         type="button"
         onClick={cycleSetType}
-        title="Tocca per cambiare tipo serie (Normale / Riscaldamento / Drop / Cedimento)"
+        title="Tipo serie (1/W/D/F)"
         style={{
-          width: 34,
-          height: 34,
+          width: 26,
+          height: 28,
           borderRadius: 'var(--radius-sm)',
           background: typeInfo.bg,
           color: typeInfo.color,
           border: '1px solid var(--border-subtle)',
           fontWeight: 800,
-          fontSize: '0.82rem',
+          fontSize: '0.74rem',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           fontFamily: 'var(--font-mono)',
+          padding: 0,
         }}
       >
         {typeInfo.label}
       </button>
 
       {/* Weight Controls */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <button
             type="button"
             onClick={() => handleWeightChange(-2.5)}
             className="btn-ghost"
-            style={{ padding: '2px 4px', fontSize: '0.72rem', height: 26 }}
+            style={{ padding: 0, width: 20, height: 26, fontSize: '0.72rem', flexShrink: 0 }}
           >
             -
           </button>
@@ -100,35 +103,37 @@ export const SetRow: React.FC<SetRowProps> = ({
             placeholder="0"
             onChange={(e) => onUpdate({ ...set, weight: parseFloat(e.target.value) || 0 })}
             style={{
-              padding: '4px 6px',
+              padding: '2px 4px',
               textAlign: 'center',
               fontWeight: 800,
               fontFamily: 'var(--font-mono)',
-              fontSize: '0.95rem',
+              fontSize: '0.86rem',
+              minWidth: 0,
+              width: '100%',
             }}
           />
           <button
             type="button"
             onClick={() => handleWeightChange(2.5)}
             className="btn-ghost"
-            style={{ padding: '2px 4px', fontSize: '0.72rem', height: 26 }}
+            style={{ padding: 0, width: 20, height: 26, fontSize: '0.72rem', flexShrink: 0 }}
           >
             +
           </button>
         </div>
-        <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-          {previousLogSet ? `Prec: ${previousLogSet.weight}kg` : 'kg'}
+        <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+          {previousLogSet ? `${previousLogSet.weight}k` : 'kg'}
         </span>
       </div>
 
       {/* Reps Controls */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <button
             type="button"
             onClick={() => handleRepsChange(-1)}
             className="btn-ghost"
-            style={{ padding: '2px 4px', fontSize: '0.72rem', height: 26 }}
+            style={{ padding: 0, width: 20, height: 26, fontSize: '0.72rem', flexShrink: 0 }}
           >
             -
           </button>
@@ -139,24 +144,26 @@ export const SetRow: React.FC<SetRowProps> = ({
             placeholder="0"
             onChange={(e) => onUpdate({ ...set, reps: parseInt(e.target.value) || 0 })}
             style={{
-              padding: '4px 6px',
+              padding: '2px 4px',
               textAlign: 'center',
               fontWeight: 800,
               fontFamily: 'var(--font-mono)',
-              fontSize: '0.95rem',
+              fontSize: '0.86rem',
+              minWidth: 0,
+              width: '100%',
             }}
           />
           <button
             type="button"
             onClick={() => handleRepsChange(1)}
             className="btn-ghost"
-            style={{ padding: '2px 4px', fontSize: '0.72rem', height: 26 }}
+            style={{ padding: 0, width: 20, height: 26, fontSize: '0.72rem', flexShrink: 0 }}
           >
             +
           </button>
         </div>
-        <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-          {previousLogSet ? `Prec: ${previousLogSet.reps} rip` : 'ripetizioni'}
+        <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+          {previousLogSet ? `${previousLogSet.reps}r` : 'reps'}
         </span>
       </div>
 
@@ -165,8 +172,8 @@ export const SetRow: React.FC<SetRowProps> = ({
         type="button"
         onClick={onToggleComplete}
         style={{
-          width: 42,
-          height: 34,
+          width: 34,
+          height: 28,
           borderRadius: 'var(--radius-sm)',
           background: set.completed ? 'var(--accent-primary)' : 'var(--bg-card-hover)',
           color: set.completed ? '#000' : 'var(--text-muted)',
@@ -175,11 +182,12 @@ export const SetRow: React.FC<SetRowProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: set.completed ? '0 0 12px rgba(16, 185, 129, 0.4)' : 'none',
+          boxShadow: set.completed ? '0 0 10px rgba(16, 185, 129, 0.35)' : 'none',
           transition: 'all 0.15s ease',
+          padding: 0,
         }}
       >
-        <Check size={20} strokeWidth={3} />
+        <Check size={16} strokeWidth={3} />
       </button>
 
       {/* Delete Set */}
@@ -187,10 +195,10 @@ export const SetRow: React.FC<SetRowProps> = ({
         type="button"
         onClick={onDelete}
         className="btn-ghost"
-        style={{ color: 'var(--text-muted)', padding: 4 }}
+        style={{ color: 'var(--text-muted)', padding: 0, width: 22, height: 28 }}
         title="Rimuovi serie"
       >
-        <Trash2 size={15} />
+        <Trash2 size={13} />
       </button>
     </div>
   );

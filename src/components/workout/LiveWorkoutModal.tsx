@@ -113,7 +113,6 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
   const handleDeleteSet = (exerciseIndex: number, setIndex: number) => {
     const updatedExercises = [...session.exercises];
     updatedExercises[exerciseIndex].sets.splice(setIndex, 1);
-    // Renumber remaining sets
     updatedExercises[exerciseIndex].sets.forEach((s, idx) => {
       s.setNumber = idx + 1;
     });
@@ -142,7 +141,7 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
 
   // Remove exercise from session
   const handleRemoveExercise = (exerciseIndex: number) => {
-    if (confirm('Rimuovere questo esercizio dalla sessione corrente?')) {
+    if (confirm('Rimuovere questo esercizio dalla sessione?')) {
       const updated = [...session.exercises];
       updated.splice(exerciseIndex, 1);
       setSession({ ...session, exercises: updated });
@@ -179,11 +178,9 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
       totalReps: totalRepsCount,
     };
 
-    // Check PRs
     const { updatedPRs, newAchievements } = OverloadEngine.evaluateNewPRs(finishedSession, existingPRs);
     finishedSession.prsAchieved = newAchievements;
 
-    // Save PRs to storage
     StorageService.savePRs(updatedPRs);
 
     if (newAchievements.length > 0) {
@@ -208,18 +205,21 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
+      width: '100%',
     }}>
       {/* Top Floating App Bar */}
       <div style={{
-        padding: '12px 16px',
-        background: 'rgba(14, 17, 24, 0.95)',
+        padding: '8px 12px',
+        background: 'rgba(14, 17, 24, 0.96)',
         backdropFilter: 'blur(16px)',
         borderBottom: '1px solid var(--border-subtle)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: 8,
+        flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
           <button
             onClick={() => {
               if (confirm('Vuoi ridurre la sessione a icona e tornare alla dashboard? I tuoi progressi sono salvati automaticamente.')) {
@@ -227,34 +227,34 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
               }
             }}
             className="btn-ghost"
-            style={{ padding: 6 }}
+            style={{ padding: 4, flexShrink: 0 }}
             title="Riduci a icona"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
-          <div>
-            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#fff', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {session.routineTitle || 'Allenamento'}
             </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {session.dayName || 'Sessione Live'}
             </div>
           </div>
         </div>
 
         {/* Stopwatch & Finish CTA */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 6,
+            gap: 4,
             background: 'var(--bg-input)',
-            padding: '6px 12px',
+            padding: '4px 8px',
             borderRadius: 'var(--radius-full)',
             border: '1px solid var(--border-subtle)',
           }}>
-            <Clock size={16} color="var(--accent-primary)" />
-            <span style={{ fontSize: '0.95rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: '#fff' }}>
+            <Clock size={13} color="var(--accent-primary)" />
+            <span style={{ fontSize: '0.84rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: '#fff' }}>
               {formatDuration(elapsedSeconds)}
             </span>
           </div>
@@ -262,9 +262,9 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
           <button
             onClick={handleCompleteWorkout}
             className="btn-primary"
-            style={{ padding: '8px 16px', fontSize: '0.86rem' }}
+            style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)' }}
           >
-            <CheckCircle size={18} /> Termina
+            <CheckCircle size={14} /> Termina
           </button>
         </div>
       </div>
@@ -273,14 +273,14 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
       <div style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '16px',
-        maxWidth: 720,
+        padding: '10px 12px',
+        maxWidth: 680,
         margin: '0 auto',
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
-        gap: 16,
-        paddingBottom: 120,
+        gap: 12,
+        paddingBottom: 100,
       }}>
         {/* Rest Timer Docked Card */}
         {isTimerActive && (
@@ -301,35 +301,35 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
               key={exLog.id}
               className="glass-card"
               style={{
-                padding: '16px',
+                padding: '12px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 12,
+                gap: 10,
+                width: '100%',
               }}
             >
               {/* Exercise Header */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{
-                      fontSize: '0.8rem',
+                      fontSize: '0.75rem',
                       fontWeight: 800,
                       color: 'var(--accent-primary)',
                       fontFamily: 'var(--font-mono)',
                     }}>
                       #{exIdx + 1}
                     </span>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+                    <h3 style={{ fontSize: '0.96rem', fontWeight: 800, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {exLog.exerciseName}
                     </h3>
                   </div>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
                     {exLog.muscleGroup.toUpperCase()}
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {/* Plate Calculator Quick Launch */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                   <button
                     type="button"
                     onClick={() => {
@@ -337,20 +337,20 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
                       setPlateCalcWeight(firstSetWeight);
                     }}
                     className="btn-ghost"
-                    style={{ padding: 6 }}
-                    title="Calcolatore piastre bilanciere"
+                    style={{ padding: 4 }}
+                    title="Calcolatore piastre"
                   >
-                    <Calculator size={17} color="var(--accent-secondary)" />
+                    <Calculator size={15} color="var(--accent-secondary)" />
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleRemoveExercise(exIdx)}
                     className="btn-ghost"
-                    style={{ padding: 6, color: 'var(--text-muted)' }}
+                    style={{ padding: 4, color: 'var(--text-muted)' }}
                     title="Rimuovi esercizio"
                   >
-                    <X size={17} />
+                    <X size={15} />
                   </button>
                 </div>
               </div>
@@ -359,25 +359,25 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
               {advice && (
                 <div style={{
                   background: advice.action === 'increase_weight'
-                    ? 'rgba(16, 185, 129, 0.12)'
+                    ? 'rgba(16, 185, 129, 0.1)'
                     : advice.action === 'increase_reps'
-                    ? 'rgba(59, 130, 246, 0.12)'
+                    ? 'rgba(59, 130, 246, 0.1)'
                     : 'rgba(255, 255, 255, 0.04)',
                   border: `1px solid ${
                     advice.action === 'increase_weight'
-                      ? 'rgba(16, 185, 129, 0.3)'
+                      ? 'rgba(16, 185, 129, 0.25)'
                       : advice.action === 'increase_reps'
-                      ? 'rgba(59, 130, 246, 0.3)'
+                      ? 'rgba(59, 130, 246, 0.25)'
                       : 'var(--border-subtle)'
                   }`,
                   borderRadius: 'var(--radius-sm)',
-                  padding: '8px 12px',
+                  padding: '6px 10px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
+                  gap: 6,
                 }}>
-                  <Sparkles size={14} color={advice.action === 'increase_weight' ? '#34d399' : '#60a5fa'} />
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)', lineHeight: 1.3 }}>
+                  <Sparkles size={13} color={advice.action === 'increase_weight' ? '#34d399' : '#60a5fa'} style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-primary)', lineHeight: 1.2 }}>
                     <strong>{advice.title}:</strong> {advice.reason}
                   </span>
                 </div>
@@ -386,23 +386,23 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
               {/* Sets Table Header */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '40px 1.1fr 1.1fr 50px 32px',
-                gap: 8,
-                fontSize: '0.72rem',
+                gridTemplateColumns: '26px 1fr 1fr 34px 22px',
+                gap: 4,
+                fontSize: '0.66rem',
                 fontWeight: 700,
                 color: 'var(--text-muted)',
                 textAlign: 'center',
-                padding: '0 10px',
+                padding: '0 6px',
               }}>
                 <span>SET</span>
-                <span>PESO (KG)</span>
+                <span>PESO</span>
                 <span>REPS</span>
-                <span>FATTO</span>
+                <span>OK</span>
                 <span></span>
               </div>
 
               {/* Sets Rows */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {exLog.sets.map((set, setIdx) => (
                   <SetRow
                     key={set.id}
@@ -419,16 +419,16 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
                 type="button"
                 onClick={() => handleAddSet(exIdx)}
                 className="btn-secondary"
-                style={{ padding: '8px 12px', fontSize: '0.82rem', marginTop: 4 }}
+                style={{ padding: '6px 10px', fontSize: '0.78rem', alignSelf: 'flex-start' }}
               >
-                <Plus size={15} /> Aggiungi Serie
+                <Plus size={13} /> Serie
               </button>
             </div>
           );
         })}
 
-        {/* Add Exercise Floating / Bottom Card */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+        {/* Add Exercise Bottom Button */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
           <button
             type="button"
             onClick={() => {
@@ -443,9 +443,9 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
               }
             }}
             className="btn-secondary"
-            style={{ padding: '12px 20px', borderRadius: 'var(--radius-full)' }}
+            style={{ padding: '8px 16px', borderRadius: 'var(--radius-full)', fontSize: '0.82rem' }}
           >
-            <Plus size={18} /> Aggiungi Altro Esercizio alla Sessione
+            <Plus size={15} /> Aggiungi Esercizio alla Sessione
           </button>
         </div>
       </div>

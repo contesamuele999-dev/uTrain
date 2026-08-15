@@ -31,29 +31,29 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ sessions }) => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
       {/* Header */}
       <div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+        <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', margin: 0 }}>
           Storico Allenamenti ({sessions.length})
         </h1>
-        <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
-          Archivio cronologico di tutte le sessioni completate con serie, pesi e feedback
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0 }}>
+          Archivio cronologico di tutte le sessioni completate
         </p>
       </div>
 
       {sessions.length === 0 ? (
-        <div className="glass-card" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          <History size={48} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 6, color: '#fff' }}>
+        <div className="glass-card" style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <History size={36} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 4, color: '#fff' }}>
             Nessun allenamento completato
           </h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
             Inizia il tuo primo allenamento dalla Dashboard per popolare lo storico!
           </p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {sessions.map((session) => {
             const isExpanded = expandedSessionId === session.id;
 
@@ -62,64 +62,65 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ sessions }) => {
                 key={session.id}
                 className="glass-card"
                 style={{
-                  padding: '18px 20px',
+                  padding: '12px 14px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 12,
+                  gap: 8,
                   cursor: 'pointer',
+                  width: '100%',
                 }}
                 onClick={() => setExpandedSessionId(isExpanded ? null : session.id)}
               >
                 {/* Header Row */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <h2 style={{ fontSize: '0.98rem', fontWeight: 800, color: '#fff', margin: 0 }}>
                         {session.routineTitle || 'Allenamento Libero'}
                       </h2>
                       {session.prsAchieved && session.prsAchieved.length > 0 && (
-                        <span className="chip chip-amber" style={{ fontSize: '0.72rem' }}>
-                          <Trophy size={12} /> {session.prsAchieved.length} PR
+                        <span className="chip chip-amber" style={{ fontSize: '0.66rem', padding: '2px 6px' }}>
+                          <Trophy size={10} /> {session.prsAchieved.length} PR
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                      <Calendar size={13} /> {formatDateIt(session.startTime)}
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <Calendar size={11} /> {formatDateIt(session.startTime)}
                       {session.dayName && <span>• {session.dayName}</span>}
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>
-                        {session.totalVolumeKg} kg
+                      <div style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>
+                        {session.totalVolumeKg}kg
                       </div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
-                        <Clock size={12} /> {formatDuration(session.durationSeconds)}
+                      <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3, justifyContent: 'flex-end' }}>
+                        <Clock size={10} /> {formatDuration(session.durationSeconds)}
                       </div>
                     </div>
 
                     <button
                       onClick={(e) => handleDeleteSession(session.id, e)}
                       className="btn-ghost"
-                      style={{ color: 'var(--accent-danger)', padding: 6 }}
+                      style={{ color: 'var(--accent-danger)', padding: 4 }}
                       title="Elimina sessione"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={14} />
                     </button>
 
-                    {isExpanded ? <ChevronUp size={20} color="var(--text-muted)" /> : <ChevronDown size={20} color="var(--text-muted)" />}
+                    {isExpanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
                   </div>
                 </div>
 
                 {/* Rating & Notes preview */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   {session.rating && (
-                    <div style={{ display: 'flex', gap: 2 }}>
+                    <div style={{ display: 'flex', gap: 1 }}>
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star
                           key={i}
-                          size={14}
+                          size={12}
                           fill={i < session.rating! ? '#fbbf24' : 'none'}
                           color={i < session.rating! ? '#fbbf24' : 'var(--text-muted)'}
                         />
@@ -127,7 +128,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ sessions }) => {
                     </div>
                   )}
                   {session.notes && (
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                       &ldquo;{session.notes}&rdquo;
                     </span>
                   )}
@@ -138,33 +139,33 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ sessions }) => {
                   <div
                     style={{
                       borderTop: '1px solid var(--border-subtle)',
-                      paddingTop: 14,
-                      marginTop: 4,
+                      paddingTop: 8,
+                      marginTop: 2,
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: 12,
+                      gap: 8,
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* AI Feedback if present */}
                     {session.aiFeedback && (
                       <div style={{
-                        background: 'rgba(139, 92, 246, 0.1)',
-                        border: '1px solid rgba(139, 92, 246, 0.3)',
+                        background: 'rgba(139, 92, 246, 0.08)',
+                        border: '1px solid rgba(139, 92, 246, 0.25)',
                         borderRadius: 'var(--radius-sm)',
-                        padding: '10px 14px',
-                        fontSize: '0.84rem',
+                        padding: '8px 10px',
+                        fontSize: '0.78rem',
                         color: '#f1f5f9',
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#c4b5fd', fontWeight: 700, marginBottom: 4 }}>
-                          <Sparkles size={14} /> AI Coach Review:
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#c4b5fd', fontWeight: 700, marginBottom: 2 }}>
+                          <Sparkles size={12} /> AI Coach Review:
                         </div>
                         {session.aiFeedback}
                       </div>
                     )}
 
                     {/* Exercises breakdown */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {session.exercises.map((ex, exIdx) => {
                         const completedSets = ex.sets.filter((s) => s.completed);
                         if (completedSets.length === 0) return null;
@@ -175,20 +176,20 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ sessions }) => {
                             style={{
                               background: 'var(--bg-input)',
                               borderRadius: 'var(--radius-sm)',
-                              padding: '10px 14px',
+                              padding: '8px 10px',
                               display: 'flex',
                               flexDirection: 'column',
-                              gap: 6,
+                              gap: 4,
                             }}
                           >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', fontWeight: 700, color: '#fff' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>
                               <span>{ex.exerciseName}</span>
-                              <span style={{ fontSize: '0.74rem', color: 'var(--accent-primary)' }}>
-                                {completedSets.length} serie completate
+                              <span style={{ fontSize: '0.68rem', color: 'var(--accent-primary)' }}>
+                                {completedSets.length} serie
                               </span>
                             </div>
 
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                               {completedSets.map((s, sIdx) => (
                                 <span
                                   key={s.id || sIdx}
@@ -196,8 +197,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ sessions }) => {
                                     background: 'var(--bg-card)',
                                     border: '1px solid var(--border-subtle)',
                                     borderRadius: 'var(--radius-sm)',
-                                    padding: '4px 8px',
-                                    fontSize: '0.78rem',
+                                    padding: '2px 6px',
+                                    fontSize: '0.72rem',
                                     fontFamily: 'var(--font-mono)',
                                     color: s.isPR ? '#fbbf24' : 'var(--text-primary)',
                                     fontWeight: 700,

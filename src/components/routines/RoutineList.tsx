@@ -55,39 +55,39 @@ export const RoutineList: React.FC<RoutineListProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', margin: 0 }}>
             Le Mie Schede ({routines.length})
           </h1>
-          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
-            Gestisci i tuoi split di allenamento o genera una nuova programmazione scientifica con l&apos;AI
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0 }}>
+            Gestisci i tuoi split o creane uno su misura con l&apos;AI
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onOpenAIGenerator} className="btn-ai" style={{ padding: '9px 16px', fontSize: '0.85rem' }}>
-            <Sparkles size={16} /> Genera con AI Gemini
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button onClick={onOpenAIGenerator} className="btn-ai" style={{ padding: '6px 10px', fontSize: '0.78rem' }}>
+            <Sparkles size={14} /> Genera AI
           </button>
-          <button onClick={onCreateManualRoutine} className="btn-secondary" style={{ padding: '9px 16px', fontSize: '0.85rem' }}>
-            <Plus size={16} /> Nuova Scheda Manuale
+          <button onClick={onCreateManualRoutine} className="btn-secondary" style={{ padding: '6px 10px', fontSize: '0.78rem' }}>
+            <Plus size={14} /> Nuova Scheda
           </button>
         </div>
       </div>
 
       {/* Routine Cards Grid */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {routines.length === 0 ? (
-          <div className="glass-card" style={{ padding: '40px 20px', textAlign: 'center' }}>
-            <CalendarDays size={48} color="var(--text-muted)" style={{ margin: '0 auto 12px' }} />
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 6 }}>Nessuna scheda presente</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 16 }}>
-              Crea la tua prima scheda personalizzata oppure usa l&apos;AI per generarla su misura in 5 secondi.
+          <div className="glass-card" style={{ padding: '24px 16px', textAlign: 'center' }}>
+            <CalendarDays size={36} color="var(--text-muted)" style={{ margin: '0 auto 8px' }} />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 4 }}>Nessuna scheda presente</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
+              Crea la tua prima scheda personalizzata oppure usa l&apos;AI in 5 secondi.
             </p>
-            <button onClick={onOpenAIGenerator} className="btn-ai">
-              <Sparkles size={18} /> Genera Scheda con Gemini AI
+            <button onClick={onOpenAIGenerator} className="btn-ai" style={{ padding: '8px 14px', fontSize: '0.82rem' }}>
+              <Sparkles size={15} /> Genera con Gemini AI
             </button>
           </div>
         ) : (
@@ -100,85 +100,87 @@ export const RoutineList: React.FC<RoutineListProps> = ({
                 key={routine.id}
                 className={`glass-card ${isActive ? 'glow-card' : ''}`}
                 style={{
-                  padding: '18px 20px',
+                  padding: '12px 14px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 14,
-                  borderLeft: isActive ? '4px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
+                  gap: 10,
+                  borderLeft: isActive ? '3px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
                 }}
               >
                 {/* Header Card */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <h2
-                      onClick={() => setExpandedRoutineId(isExpanded ? null : routine.id)}
-                      style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', margin: 0, cursor: 'pointer' }}
-                    >
-                      {routine.title}
-                    </h2>
-                    {isActive && (
-                      <span className="chip chip-green" style={{ fontSize: '0.72rem' }}>
-                        <CheckCircle size={12} /> Scheda Attiva
-                      </span>
-                    )}
-                    {routine.isAiGenerated && (
-                      <span className="chip chip-purple" style={{ fontSize: '0.72rem' }}>
-                        <Sparkles size={12} /> AI Gemini
-                      </span>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <h2
+                        onClick={() => setExpandedRoutineId(isExpanded ? null : routine.id)}
+                        style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', margin: 0, cursor: 'pointer' }}
+                      >
+                        {routine.title}
+                      </h2>
+                      {isActive && (
+                        <span className="chip chip-green" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
+                          <CheckCircle size={10} /> Attiva
+                        </span>
+                      )}
+                      {routine.isAiGenerated && (
+                        <span className="chip chip-purple" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
+                          <Sparkles size={10} /> AI
+                        </span>
+                      )}
+                    </div>
+
+                    {routine.description && (
+                      <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
+                        {routine.description}
+                      </p>
                     )}
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                     {!isActive && (
                       <button
                         onClick={() => onSelectActiveRoutine(routine.id)}
                         className="btn-secondary"
-                        style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+                        style={{ padding: '4px 8px', fontSize: '0.72rem' }}
                       >
-                        Imposta come Attiva
+                        Attiva
                       </button>
                     )}
                     <button
                       onClick={(e) => handleDuplicate(routine, e)}
                       className="btn-ghost"
-                      style={{ padding: 6 }}
+                      style={{ padding: '4px 6px' }}
                       title="Duplica scheda"
                     >
-                      <Copy size={16} />
+                      <Copy size={14} />
                     </button>
                     <button
                       onClick={() => onEditRoutine(routine)}
                       className="btn-ghost"
-                      style={{ padding: 6 }}
+                      style={{ padding: '4px 6px' }}
                       title="Modifica scheda"
                     >
-                      <Edit2 size={16} />
+                      <Edit2 size={14} />
                     </button>
                     <button
                       onClick={(e) => handleDelete(routine.id, e)}
                       className="btn-ghost"
-                      style={{ color: 'var(--accent-danger)', padding: 6 }}
+                      style={{ color: 'var(--accent-danger)', padding: '4px 6px' }}
                       title="Elimina scheda"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
 
-                {routine.description && (
-                  <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
-                    {routine.description}
-                  </p>
-                )}
-
                 {/* Days Breakdown Accordion */}
                 {isExpanded && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
-                    <div style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--border-subtle)', paddingTop: 8 }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                       Sessioni ({routine.days.length} Giorni):
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
                       {routine.days.map((day) => (
                         <div
                           key={day.id}
@@ -186,31 +188,34 @@ export const RoutineList: React.FC<RoutineListProps> = ({
                             background: 'var(--bg-input)',
                             border: '1px solid var(--border-subtle)',
                             borderRadius: 'var(--radius-sm)',
-                            padding: '12px 14px',
+                            padding: '10px 12px',
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'space-between',
-                            gap: 10,
+                            gap: 8,
                           }}
                         >
                           <div>
-                            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--accent-primary)', marginBottom: 6 }}>
+                            <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--accent-primary)', marginBottom: 4 }}>
                               {day.name}
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                               {day.exercises.map((ex, eIdx) => (
                                 <div
                                   key={ex.id}
                                   style={{
-                                    fontSize: '0.8rem',
+                                    fontSize: '0.76rem',
                                     color: 'var(--text-primary)',
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
+                                    gap: 6,
                                   }}
                                 >
-                                  <span>{eIdx + 1}. {ex.name}</span>
-                                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '0.74rem' }}>
+                                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {eIdx + 1}. {ex.name}
+                                  </span>
+                                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '0.7rem', flexShrink: 0 }}>
                                     {ex.targetSets}×{ex.targetRepsMin}-{ex.targetRepsMax}
                                   </span>
                                 </div>
@@ -221,9 +226,9 @@ export const RoutineList: React.FC<RoutineListProps> = ({
                           <button
                             onClick={() => onStartWorkout(routine, day)}
                             className="btn-primary"
-                            style={{ width: '100%', padding: '8px 12px', fontSize: '0.84rem' }}
+                            style={{ width: '100%', padding: '7px 10px', fontSize: '0.78rem' }}
                           >
-                            <Play size={16} /> Esegui questo Giorno
+                            <Play size={14} /> Esegui questo Giorno
                           </button>
                         </div>
                       ))}
