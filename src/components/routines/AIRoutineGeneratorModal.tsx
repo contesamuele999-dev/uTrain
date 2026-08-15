@@ -28,10 +28,8 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
   isOpen,
   onClose,
   onRoutineCreated,
-  onOpenSettings,
 }) => {
   const settings = StorageService.getSettings();
-  const hasApiKey = !!settings.geminiApiKey;
 
   // Form State
   const [goal, setGoal] = useState<'hypertrophy' | 'strength' | 'endurance' | 'fat_loss' | 'general_fitness'>('hypertrophy');
@@ -72,11 +70,6 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
   };
 
   const handleGenerate = async () => {
-    if (!hasApiKey) {
-      setErrorMessage('È necessaria una chiave API gratuita di Google Gemini.');
-      return;
-    }
-
     setIsGenerating(true);
     setErrorMessage(null);
     setGeneratedResult(null);
@@ -228,29 +221,6 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
 
         {/* Modal Body */}
         <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
-          {!hasApiKey && (
-            <div style={{
-              background: 'rgba(245, 158, 11, 0.12)',
-              border: '1px solid rgba(245, 158, 11, 0.4)',
-              borderRadius: 'var(--radius-sm)',
-              padding: '12px 14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <AlertCircle size={20} color="#fbbf24" style={{ flexShrink: 0 }} />
-                <span style={{ fontSize: '0.84rem', color: '#fef3c7' }}>
-                  Chiave Google Gemini non configurata. Inseriscila gratuitamente per sbloccare la generazione.
-                </span>
-              </div>
-              <button onClick={onOpenSettings} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
-                Imposta Chiave
-              </button>
-            </div>
-          )}
-
           {errorMessage && (
             <div style={{
               background: 'rgba(239, 68, 68, 0.15)',
@@ -558,7 +528,7 @@ export const AIRoutineGeneratorModal: React.FC<AIRoutineGeneratorModalProps> = (
           {!generatedResult ? (
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || !hasApiKey}
+              disabled={isGenerating}
               className="btn-ai"
               style={{ padding: '10px 22px' }}
             >

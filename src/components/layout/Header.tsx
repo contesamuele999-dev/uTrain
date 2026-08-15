@@ -1,6 +1,5 @@
 import React from 'react';
 import { Dumbbell, Bot, Sparkles, Settings as SettingsIcon, LogIn } from 'lucide-react';
-import { StorageService } from '../../services/storage';
 import type { User } from '../../types/auth';
 
 interface HeaderProps {
@@ -18,9 +17,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAuth,
   onOpenProfile,
 }) => {
-  const settings = StorageService.getSettings();
-  const hasGeminiKey = !!settings.geminiApiKey;
-
   const initials = user
     ? user.name
         .split(' ')
@@ -112,21 +108,9 @@ export const Header: React.FC<HeaderProps> = ({
               borderRadius: 'var(--radius-full)',
               position: 'relative',
             }}
-            title="Impostazioni & Chiave Gemini"
+            title="Impostazioni"
           >
             <SettingsIcon size={19} />
-            {!hasGeminiKey && (
-              <span style={{
-                position: 'absolute',
-                top: 6,
-                right: 6,
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: 'var(--accent-amber)',
-                boxShadow: '0 0 6px var(--accent-amber)',
-              }} />
-            )}
           </button>
 
           {/* User Account / Profile Button */}

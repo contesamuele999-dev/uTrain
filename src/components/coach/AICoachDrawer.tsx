@@ -4,7 +4,6 @@ import {
   Bot,
   Sparkles,
   Send,
-  AlertCircle,
 } from 'lucide-react';
 import { GeminiService } from '../../services/gemini';
 import { StorageService } from '../../services/storage';
@@ -25,10 +24,8 @@ interface ChatMessage {
 export const AICoachDrawer: React.FC<AICoachDrawerProps> = ({
   isOpen,
   onClose,
-  onOpenSettings,
 }) => {
   const settings = StorageService.getSettings();
-  const hasApiKey = !!settings.geminiApiKey;
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -66,26 +63,6 @@ Come posso aiutarti oggi? Posso analizzare la tua progressione di carico, sugger
   const handleSendMessage = async (textToSend?: string) => {
     const query = textToSend || inputText;
     if (!query.trim() || isLoading) return;
-
-    if (!hasApiKey) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `user-${Date.now()}`,
-          role: 'user',
-          text: query,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-        {
-          id: `ai-${Date.now()}`,
-          role: 'model',
-          text: 'Per chattare con il Coach AI è necessaria la tua chiave API gratuita Google Gemini. Configurala nelle impostazioni in 30 secondi!',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
-      setInputText('');
-      return;
-    }
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -192,7 +169,7 @@ Come posso aiutarti oggi? Posso analizzare la tua progressione di carico, sugger
                 AI Coach Personale
               </h3>
               <p style={{ fontSize: '0.72rem', color: '#c4b5fd', margin: 0 }}>
-                Powered by Google Gemini (Free Tier)
+                Powered by Google Gemini (Free Tier Integrato)
               </p>
             </div>
           </div>
@@ -211,27 +188,6 @@ Come posso aiutarti oggi? Posso analizzare la tua progressione di carico, sugger
           flexDirection: 'column',
           gap: 12,
         }}>
-          {!hasApiKey && (
-            <div style={{
-              background: 'rgba(245, 158, 11, 0.12)',
-              border: '1px solid rgba(245, 158, 11, 0.35)',
-              borderRadius: 'var(--radius-sm)',
-              padding: '10px 14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 10,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem', color: '#fef3c7' }}>
-                <AlertCircle size={16} color="#fbbf24" style={{ flexShrink: 0 }} />
-                Chiave API non impostata.
-              </div>
-              <button onClick={onOpenSettings} className="btn-secondary" style={{ padding: '4px 10px', fontSize: '0.75rem' }}>
-                Configura ora
-              </button>
-            </div>
-          )}
-
           {messages.map((msg) => {
             const isUser = msg.role === 'user';
 

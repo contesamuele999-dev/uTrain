@@ -6,13 +6,11 @@ on:
       - main
   workflow_dispatch:
 
-# Imposta i permessi per il deployment su GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Permette una sola distribuzione simultanea
 concurrency:
   group: 'pages'
   cancel-in-progress: true
@@ -34,6 +32,8 @@ jobs:
         run: npm ci
 
       - name: Build production bundle
+        env:
+          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
         run: npm run build
 
       - name: Setup Pages

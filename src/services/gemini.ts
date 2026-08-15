@@ -1,4 +1,5 @@
 import { StorageService } from './storage';
+import { AI_CONFIG } from '../config/aiConfig';
 import type {
   AIRoutineGeneratorRequest,
   AIRoutineGeneratorResponse,
@@ -7,14 +8,29 @@ import type {
 } from '../types/gemini';
 
 export class GeminiService {
-  private static getApiKey(): string {
-    const settings = StorageService.getSettings();
-    return settings.geminiApiKey?.trim() || '';
+  /**
+   * Recupera la chiave API attiva:
+   * Priorità 1: Chiave configurata in locale nelle Impostazioni (override opzionale)
+   * Priorità 2: Variabile d'ambiente VITE_GEMINI_API_KEY
+   * Priorità 3: Chiave fissa predefinita in AI_CONFIG
+   */
+  static getApiKey(): string {
+    const userKey = StorageService.getSettings().geminiApiKey?.trim();
+    if (userKey) return userKey;
+
+    const envKey = (import.meta.env.VITE_GEMINI_API_KEY as string)?.trim();
+    if (envKey) return envKey;
+
+    return AI_CONFIG.DEFAULT_API_KEY?.trim() || '';
+  }
+
+  static isKeyConfigured(): boolean {
+    return !!this.getApiKey();
   }
 
   private static getModel(): string {
     const settings = StorageService.getSettings();
-    return settings.geminiModel || 'gemini-1.5-flash';
+    return settings.geminiModel || AI_CONFIG.DEFAULT_MODEL || 'gemini-1.5-flash';
   }
 
   /**
@@ -28,7 +44,7 @@ export class GeminiService {
     const apiKey = this.getApiKey();
     if (!apiKey) {
       throw new Error(
-        'Chiave API Google Gemini non configurata. Vai nelle Impostazioni per inserire la tua chiave gratuita di Google AI Studio.'
+        'Nessuna chiave API Gemini impostata. Inseriscila nel file .env o nelle impostazioni.'
       );
     }
 
@@ -69,10 +85,10 @@ export class GeminiService {
         `Errore API Google Gemini (${response.status}: ${response.statusText})`;
       
       if (response.status === 400 && errorMsg.includes('API_KEY_INVALID')) {
-        throw new Error('Chiave API non valida. Controlla la chiave inserita nelle Impostazioni.');
+        throw new Error('Chiave API Google Gemini non valida.');
       }
       if (response.status === 429) {
-        throw new Error('Limite di richieste gratuite raggiunto per questo minuto. Attendi qualche istante e riprova.');
+        throw new Error('Limite di richieste raggiunto per questo minuto. Attendi qualche istante e riprova.');
       }
       throw new Error(errorMsg);
     }
@@ -131,7 +147,7 @@ export class GeminiService {
   ): Promise<AIRoutineGeneratorResponse> {
     const systemPrompt = `Sei un Master Coach di Scienza dell'Esercizio, Bodybuilding e Strength & Conditioning.
 Il tuo compito è creare una scheda di allenamento scientifica, efficace, con volume bilanciato e gestione della fatica ottimale.
-DEVI restituire ESCLUSIVAMENTE un oggetto JSON valido (nessun markdown wrapper se in modalità application/json, o un JSON puro) che rispetti la seguente struttura:
+DEVI restituire ESCLUSIVAMENTE un oggetto JSON valido (senza markdown wrapper) che rispetti la seguente struttura:
 
 {
   "title": "Titolo accattivante della scheda (es. Hypertrophy Precision PPL)",
@@ -140,7 +156,7 @@ DEVI restituire ESCLUSIVAMENTE un oggetto JSON valido (nessun markdown wrapper s
   "weeklyStrategyTip": "Consiglio pratico su recupero, alimentazione o progressione",
   "days": [
     {
-      "dayName": "Nome del giorno (es. Giorno 1: Push (Focus Pettorali e Deltoide Anteriore))",
+      "dayName": "Nome del giorno (es. Giorno 1: Push (Focus Pettorali e Spalle))",
       "focus": "Focus muscolare primario",
       "exercises": [
         {
@@ -151,7 +167,7 @@ DEVI restituire ESCLUSIVAMENTE un oggetto JSON valido (nessun markdown wrapper s
           "repsMax": 10,
           "targetRpe": 8,
           "restSeconds": 90,
-          "notes": "Consiglio tecnico specifico (es. 2 sec eccentrica controllata)"
+          "notes": "Consiglio tecnico specifico"
         }
       ]
     }

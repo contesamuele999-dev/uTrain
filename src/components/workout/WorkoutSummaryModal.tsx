@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import type { WorkoutSession } from '../../types/workout';
 import { GeminiService } from '../../services/gemini';
-import { StorageService } from '../../services/storage';
 import { formatDuration } from '../../utils/calculations';
 
 interface WorkoutSummaryModalProps {
@@ -46,12 +45,6 @@ export const WorkoutSummaryModal: React.FC<WorkoutSummaryModalProps> = ({
   }, [hasPRs]);
 
   const handleRequestAIFeedback = async () => {
-    const settings = StorageService.getSettings();
-    if (!settings.geminiApiKey) {
-      setAiFeedback('Configura la tua chiave API Google Gemini nelle impostazioni per sbloccare l\'analisi sessione dell\'AI.');
-      return;
-    }
-
     setIsAiLoading(true);
     try {
       const summaryContext = `Sessione: ${session.routineTitle || 'Allenamento'}. Durata: ${formatDuration(session.durationSeconds)}. Volume totale: ${session.totalVolumeKg}kg in ${session.totalSets} serie completate. PR raggiunti: ${session.prsAchieved?.map((p) => `${p.exerciseName}: ${p.value}`).join(', ') || 'Nessuno'}. Note atleta: ${notes}`;
@@ -62,7 +55,7 @@ export const WorkoutSummaryModal: React.FC<WorkoutSummaryModalProps> = ({
       );
       setAiFeedback(feedback);
     } catch {
-      setAiFeedback('Ottimo lavoro per aver portato a termine la sessione! Ricordati di assumere 25-30g di proteine e idratarti abbondantemente.');
+      setAiFeedback('Ottimo lavoro per aver portato a termine la sessione! Ricordati di assumere 25-30g di proteine e idratarti abbondantemente per favorire la sintesi proteica.');
     } finally {
       setIsAiLoading(false);
     }

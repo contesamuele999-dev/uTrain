@@ -5,7 +5,6 @@ import {
   Upload,
   RotateCcw,
   Sparkles,
-  ExternalLink,
   CheckCircle2,
   AlertCircle,
   Database,
@@ -51,13 +50,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const handleTestKey = async () => {
-    if (!apiKeyInput.trim()) {
-      setTestStatus({ loading: false, success: false, message: 'Inserisci prima una chiave API.' });
+    const keyToTest = apiKeyInput.trim() || GeminiService.getApiKey();
+    if (!keyToTest) {
+      setTestStatus({ loading: false, success: false, message: 'Nessuna chiave configurata da verificare.' });
       return;
     }
 
     setTestStatus({ loading: true });
-    const result = await GeminiService.testApiKey(apiKeyInput.trim());
+    const result = await GeminiService.testApiKey(keyToTest);
     setTestStatus({ loading: false, success: result.success, message: result.message });
   };
 
@@ -109,10 +109,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* Header */}
       <div>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0 }}>
-          Impostazioni & Configurazione AI
+          Impostazioni & Configurazione
         </h1>
         <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
-          Gestisci il profilo, la tua chiave gratuita Google Gemini e il backup dei dati
+          Gestisci il tuo profilo atleta, il modello AI e il backup dei dati
         </p>
       </div>
 
@@ -151,7 +151,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
-      {/* Google Gemini Free Tier Setup */}
+      {/* Google Gemini AI Status */}
       <div
         className="glass-card"
         style={{
@@ -178,26 +178,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
             <div>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: '#fff' }}>
-                Google Gemini API (100% Gratuito)
+                Motore Google Gemini AI (Integrato & Gratuito)
               </h3>
               <span className="chip chip-green" style={{ fontSize: '0.72rem', marginTop: 2 }}>
-                <Flame size={12} /> Free Tier Illimitato per uso personale
+                <Flame size={12} /> Attivo & Pronto all&apos;uso per tutti gli utenti
               </span>
             </div>
           </div>
 
-          <a
-            href="https://aistudio.google.com/app/apikey"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
+            onClick={handleTestKey}
+            disabled={testStatus?.loading}
             className="btn-ai"
-            style={{ padding: '6px 12px', fontSize: '0.78rem', textDecoration: 'none' }}
+            style={{ padding: '6px 14px', fontSize: '0.82rem' }}
           >
-            Ottieni Chiave Gratis su Google AI Studio <ExternalLink size={14} />
-          </a>
+            {testStatus?.loading ? 'Verifica connessione...' : 'Test Connessione AI'}
+          </button>
         </div>
 
-        {/* Free Tier Guide Steps */}
+        {/* Info Card */}
         <div style={{
           background: 'var(--bg-input)',
           borderRadius: 'var(--radius-sm)',
@@ -206,79 +206,70 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           color: 'var(--text-secondary)',
           display: 'flex',
           flexDirection: 'column',
-          gap: 6,
+          gap: 4,
           border: '1px solid var(--border-subtle)',
         }}>
-          <strong>Come ottenere la tua chiave gratuita in 30 secondi:</strong>
-          <div>1. Clicca sul pulsante in alto a destra per aprire <strong>Google AI Studio</strong>.</div>
-          <div>2. Accedi con il tuo account Google e clicca su <strong>&ldquo;Create API key&rdquo;</strong>.</div>
-          <div>3. Copia la chiave generata e incollala nel box sottostante. Non serve inserire nessuna carta di credito.</div>
+          <div style={{ color: '#34d399', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <CheckCircle2 size={16} /> L&apos;AI Coach e il generatore di schede sono attivi e pronti per l&apos;uso.
+          </div>
+          <div>Non è necessario inserire nessuna chiave nel browser: il sistema utilizza automaticamente la configurazione fissa per tutti gli utenti.</div>
         </div>
 
-        {/* API Key Input & Model selector */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div>
-            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-              Chiave Google Gemini API (salvata solo in locale sul tuo browser):
-            </label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <input
-                  type={showKey ? 'text' : 'password'}
-                  placeholder="Incolla qui la tua chiave (es. AIzaSy...)"
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  style={{ paddingRight: 40, fontFamily: 'var(--font-mono)' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowKey(!showKey)}
-                  className="btn-ghost"
-                  style={{ position: 'absolute', right: 4, top: 4, padding: 6 }}
-                >
-                  {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleTestKey}
-                disabled={testStatus?.loading}
-                className="btn-secondary"
-                style={{ padding: '0 14px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
-              >
-                {testStatus?.loading ? 'Verifica...' : 'Testa Chiave'}
-              </button>
-            </div>
+        {/* Test Status Feedback */}
+        {testStatus && !testStatus.loading && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: '0.84rem',
+            color: testStatus.success ? '#34d399' : '#f87171',
+            background: testStatus.success ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-sm)',
+            border: `1px solid ${testStatus.success ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+          }}>
+            {testStatus.success ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+            {testStatus.message}
           </div>
+        )}
 
-          {/* Test Status Feedback */}
-          {testStatus && !testStatus.loading && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              fontSize: '0.82rem',
-              color: testStatus.success ? '#34d399' : '#f87171',
-            }}>
-              {testStatus.success ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-              {testStatus.message}
-            </div>
-          )}
-
+        {/* Model selection & Optional Override */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
           <div>
             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-              Modello Gemini:
+              Modello AI:
             </label>
             <select
               value={geminiModel}
               onChange={(e) => setGeminiModel(e.target.value as UserProfileSettings['geminiModel'])}
-              style={{ maxWidth: 300 }}
             >
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash (Consigliato - Più Veloce & Gratuito)</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash (Ultra Veloce & Consigliato)</option>
               <option value="gemini-2.0-flash">Gemini 2.0 Flash (Nuova Generazione)</option>
               <option value="gemini-1.5-pro">Gemini 1.5 Pro (Ragionamento Avanzato)</option>
             </select>
+          </div>
+
+          <div>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+              Chiave Personalizzata Opzionale (Override):
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showKey ? 'text' : 'password'}
+                placeholder="Lascia vuoto per usare la chiave predefinita"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                style={{ paddingRight: 40, fontFamily: 'var(--font-mono)' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey(!showKey)}
+                className="btn-ghost"
+                style={{ position: 'absolute', right: 4, top: 4, padding: 6 }}
+              >
+                {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
         </div>
 
