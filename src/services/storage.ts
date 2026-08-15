@@ -5,47 +5,52 @@ import type {
   PersonalRecord,
   UserProfileSettings,
 } from '../types/workout';
+import { AuthService } from './authService';
 import { DEFAULT_EXERCISES } from '../data/defaultExercises';
 import { DEFAULT_ROUTINES } from '../data/defaultRoutines';
 import { DEMO_SESSIONS, DEMO_PRS } from '../data/demoHistory';
 
-const STORAGE_KEYS = {
-  SETTINGS: 'utrain_settings_v1',
-  ROUTINES: 'utrain_routines_v1',
-  EXERCISES: 'utrain_exercises_v1',
-  SESSIONS: 'utrain_sessions_v1',
-  PRS: 'utrain_prs_v1',
-  ACTIVE_SESSION: 'utrain_active_session_v1',
-};
-
-const DEFAULT_SETTINGS: UserProfileSettings = {
-  userName: 'Atleta',
-  experienceLevel: 'intermediate',
-  preferredUnit: 'kg',
-  defaultRestSeconds: 90,
-  soundEnabled: true,
-  vibrationEnabled: true,
-  geminiApiKey: '',
-  geminiModel: 'gemini-1.5-flash',
-  activeRoutineId: 'routine-ppl-classic',
-};
-
 export class StorageService {
+  private static getUserPrefix(): string {
+    const user = AuthService.getCurrentUser();
+    return user ? `utrain_${user.id}` : 'utrain_default';
+  }
+
+  private static getKey(key: string): string {
+    return `${this.getUserPrefix()}_${key}_v1`;
+  }
+
+  private static getDefaultSettings(): UserProfileSettings {
+    const user = AuthService.getCurrentUser();
+    return {
+      userName: user ? user.name : 'Atleta',
+      experienceLevel: user ? user.experienceLevel : 'intermediate',
+      preferredUnit: 'kg',
+      defaultRestSeconds: 90,
+      soundEnabled: true,
+      vibrationEnabled: true,
+      geminiApiKey: '',
+      geminiModel: 'gemini-1.5-flash',
+      activeRoutineId: 'routine-ppl-classic',
+    };
+  }
+
   // SETTINGS
   static getSettings(): UserProfileSettings {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      if (!data) return DEFAULT_SETTINGS;
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
+      const data = localStorage.getItem(this.getKey('settings'));
+      const defaults = this.getDefaultSettings();
+      if (!data) return defaults;
+      return { ...defaults, ...JSON.parse(data) };
     } catch {
-      return DEFAULT_SETTINGS;
+      return this.getDefaultSettings();
     }
   }
 
   static saveSettings(settings: Partial<UserProfileSettings>): UserProfileSettings {
     const current = this.getSettings();
     const updated = { ...current, ...settings };
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
+    localStorage.setItem(this.getKey('settings'), JSON.stringify(updated));
     this.notifySubscribers();
     return updated;
   }
@@ -53,7 +58,7 @@ export class StorageService {
   // EXERCISES
   static getExercises(): Exercise[] {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.EXERCISES);
+      const data = localStorage.getItem(this.getKey('exercises'));
       if (!data) {
         this.saveExercises(DEFAULT_EXERCISES);
         return DEFAULT_EXERCISES;
@@ -65,7 +70,7 @@ export class StorageService {
   }
 
   static saveExercises(exercises: Exercise[]): void {
-    localStorage.setItem(STORAGE_KEYS.EXERCISES, JSON.stringify(exercises));
+    localStorage.setItem(this.getKey('exercises'), JSON.stringify(exercises));
     this.notifySubscribers();
   }
 
@@ -84,7 +89,7 @@ export class StorageService {
   // ROUTINES
   static getRoutines(): Routine[] {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.ROUTINES);
+      const data = localStorage.getItem(this.getKey('routines'));
       if (!data) {
         this.saveRoutines(DEFAULT_ROUTINES);
         return DEFAULT_ROUTINES;
@@ -96,7 +101,7 @@ export class StorageService {
   }
 
   static saveRoutines(routines: Routine[]): void {
-    localStorage.setItem(STORAGE_KEYS.ROUTINES, JSON.stringify(routines));
+    localStorage.setItem(this.getKey('routines'), JSON.stringify(routines));
     this.notifySubscribers();
   }
 
@@ -127,7 +132,7 @@ export class StorageService {
   // SESSIONS & HISTORY
   static getSessions(): WorkoutSession[] {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.SESSIONS);
+      const data = localStorage.getItem(this.getKey('sessions'));
       return data ? JSON.parse(data) : [];
     } catch {
       return [];
@@ -135,7 +140,7 @@ export class StorageService {
   }
 
   static saveSessions(sessions: WorkoutSession[]): void {
-    localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+    localStorage.setItem(this.getKey('sessions'), JSON.stringify(sessions));
     this.notifySubscribers();
   }
 
@@ -154,7 +159,7 @@ export class StorageService {
   // ACTIVE WORKOUT (DRAFT / IN-PROGRESS)
   static getActiveSession(): WorkoutSession | null {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.ACTIVE_SESSION);
+      const data = localStorage.getItem(this.getKey('active_session'));
       return data ? JSON.parse(data) : null;
     } catch {
       return null;
@@ -162,19 +167,19 @@ export class StorageService {
   }
 
   static saveActiveSession(session: WorkoutSession): void {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_SESSION, JSON.stringify(session));
+    localStorage.setItem(this.getKey('active_session'), JSON.stringify(session));
     this.notifySubscribers();
   }
 
   static clearActiveSession(): void {
-    localStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION);
+    localStorage.removeItem(this.getKey('active_session'));
     this.notifySubscribers();
   }
 
   // PERSONAL RECORDS (PRs)
   static getPRs(): Record<string, PersonalRecord> {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.PRS);
+      const data = localStorage.getItem(this.getKey('prs'));
       return data ? JSON.parse(data) : {};
     } catch {
       return {};
@@ -182,7 +187,7 @@ export class StorageService {
   }
 
   static savePRs(prs: Record<string, PersonalRecord>): void {
-    localStorage.setItem(STORAGE_KEYS.PRS, JSON.stringify(prs));
+    localStorage.setItem(this.getKey('prs'), JSON.stringify(prs));
     this.notifySubscribers();
   }
 
@@ -199,10 +204,12 @@ export class StorageService {
 
   // EXPORT / IMPORT BACKUP
   static exportFullBackupJSON(): string {
+    const user = AuthService.getCurrentUser();
     const backup = {
       app: 'uTrain',
       version: '1.0',
       exportedAt: new Date().toISOString(),
+      user: user || undefined,
       settings: this.getSettings(),
       routines: this.getRoutines(),
       exercises: this.getExercises(),
@@ -234,12 +241,8 @@ export class StorageService {
   }
 
   static resetToFactoryDefaults(): void {
-    localStorage.removeItem(STORAGE_KEYS.SETTINGS);
-    localStorage.removeItem(STORAGE_KEYS.ROUTINES);
-    localStorage.removeItem(STORAGE_KEYS.EXERCISES);
-    localStorage.removeItem(STORAGE_KEYS.SESSIONS);
-    localStorage.removeItem(STORAGE_KEYS.PRS);
-    localStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION);
+    const keys = ['settings', 'routines', 'exercises', 'sessions', 'prs', 'active_session'];
+    keys.forEach((k) => localStorage.removeItem(this.getKey(k)));
     this.notifySubscribers();
   }
 

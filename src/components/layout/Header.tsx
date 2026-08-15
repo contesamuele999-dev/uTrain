@@ -1,15 +1,34 @@
 import React from 'react';
-import { Dumbbell, Bot, Sparkles, Settings as SettingsIcon } from 'lucide-react';
+import { Dumbbell, Bot, Sparkles, Settings as SettingsIcon, LogIn } from 'lucide-react';
 import { StorageService } from '../../services/storage';
+import type { User } from '../../types/auth';
 
 interface HeaderProps {
+  user: User | null;
   onOpenCoach: () => void;
   onOpenSettings: () => void;
+  onOpenAuth: () => void;
+  onOpenProfile: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenCoach, onOpenSettings }) => {
+export const Header: React.FC<HeaderProps> = ({
+  user,
+  onOpenCoach,
+  onOpenSettings,
+  onOpenAuth,
+  onOpenProfile,
+}) => {
   const settings = StorageService.getSettings();
   const hasGeminiKey = !!settings.geminiApiKey;
+
+  const initials = user
+    ? user.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .substring(0, 2)
+    : '';
 
   return (
     <header style={{
@@ -73,18 +92,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenCoach, onOpenSettings }) =
             onClick={onOpenCoach}
             className="btn-ai"
             style={{
-              padding: '8px 14px',
-              fontSize: '0.85rem',
+              padding: '8px 12px',
+              fontSize: '0.82rem',
               borderRadius: 'var(--radius-full)',
             }}
             title="Apri AI Coach Personale"
           >
-            <Bot size={18} />
+            <Bot size={17} />
             <span style={{ display: 'inline' }}>AI Coach</span>
-            <Sparkles size={14} style={{ opacity: 0.8 }} />
+            <Sparkles size={13} style={{ opacity: 0.8 }} />
           </button>
 
-          {/* Settings / API Key status */}
+          {/* Settings button */}
           <button
             onClick={onOpenSettings}
             className="btn-ghost"
@@ -95,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenCoach, onOpenSettings }) =
             }}
             title="Impostazioni & Chiave Gemini"
           >
-            <SettingsIcon size={20} />
+            <SettingsIcon size={19} />
             {!hasGeminiKey && (
               <span style={{
                 position: 'absolute',
@@ -109,6 +128,39 @@ export const Header: React.FC<HeaderProps> = ({ onOpenCoach, onOpenSettings }) =
               }} />
             )}
           </button>
+
+          {/* User Account / Profile Button */}
+          {user ? (
+            <button
+              onClick={onOpenProfile}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 'var(--radius-full)',
+                background: user.avatarColor || 'linear-gradient(135deg, #10b981, #059669)',
+                color: '#fff',
+                border: '2px solid rgba(255, 255, 255, 0.2)',
+                fontWeight: 800,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 10px rgba(16, 185, 129, 0.25)',
+              }}
+              title={`Account: ${user.name} (${user.email})`}
+            >
+              {initials}
+            </button>
+          ) : (
+            <button
+              onClick={onOpenAuth}
+              className="btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-full)' }}
+            >
+              <LogIn size={15} /> Accedi
+            </button>
+          )}
         </div>
       </div>
     </header>

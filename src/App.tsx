@@ -12,8 +12,12 @@ import { AnalyticsView } from './components/analytics/AnalyticsView';
 import { ExerciseLibrary } from './components/exercises/ExerciseLibrary';
 import { AICoachDrawer } from './components/coach/AICoachDrawer';
 import { SettingsView } from './components/settings/SettingsView';
+import { AuthModal } from './components/auth/AuthModal';
+import { UserProfileModal } from './components/auth/UserProfileModal';
 
+import { AuthService } from './services/authService';
 import { StorageService } from './services/storage';
+import type { User } from './types/auth';
 import type {
   Routine,
   RoutineDay,
@@ -23,6 +27,12 @@ import type {
 } from './types/workout';
 
 export const App: React.FC = () => {
+  // Auth State
+  const [currentUser, setCurrentUser] = useState<User | null>(AuthService.getCurrentUser());
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(!AuthService.getCurrentUser());
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+
+  // App Navigation & Data State
   const [currentTab, setCurrentTab] = useState<TabType>('dashboard');
   const [settings, setSettings] = useState<UserProfileSettings>(StorageService.getSettings());
   const [routines, setRoutines] = useState<Routine[]>(StorageService.getRoutines());
@@ -38,17 +48,35 @@ export const App: React.FC = () => {
   const [editingRoutine, setEditingRoutine] = useState<Routine | null | 'new'>(null);
   const [activeLiveWorkout, setActiveLiveWorkout] = useState<WorkoutSession | null>(null);
 
-  // Reactive subscription to storage changes
+  // Reload data whenever current user changes
+  const reloadUserData = () => {
+    setSettings(StorageService.getSettings());
+    setRoutines(StorageService.getRoutines());
+    setSessions(StorageService.getSessions());
+    setPrs(StorageService.getPRs());
+    setActiveWorkoutDraft(StorageService.getActiveSession());
+  };
+
   useEffect(() => {
-    const unsubscribe = StorageService.subscribe(() => {
-      setSettings(StorageService.getSettings());
-      setRoutines(StorageService.getRoutines());
-      setSessions(StorageService.getSessions());
-      setPrs(StorageService.getPRs());
-      setActiveWorkoutDraft(StorageService.getActiveSession());
+    // Initialize default demo account if needed
+    AuthService.initDefaultAccounts();
+
+    // Subscribe to Auth changes
+    const unsubAuth = AuthService.subscribe((user) => {
+      setCurrentUser(user);
+      setIsAuthModalOpen(!user);
+      reloadUserData();
     });
 
-    return () => unsubscribe();
+    // Subscribe to storage changes
+    const unsubStorage = StorageService.subscribe(() => {
+      reloadUserData();
+    });
+
+    return () => {
+      unsubAuth();
+      unsubStorage();
+    };
   }, []);
 
   const activeRoutine = routines.find((r) => r.id === settings.activeRoutineId) || routines[0];
@@ -67,7 +95,6 @@ export const App: React.FC = () => {
       totalSets: 0,
       totalReps: 0,
       exercises: day.exercises.map((ex) => {
-        // Find previous logs if any to prefill
         const lastSessionWithEx = sessions.find((s) =>
           s.exercises.some((e) => e.exerciseId === ex.exerciseId)
         );
@@ -115,8 +142,11 @@ export const App: React.FC = () => {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Top Header */}
       <Header
+        user={currentUser}
         onOpenCoach={() => setIsCoachOpen(true)}
         onOpenSettings={() => setCurrentTab('settings')}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
       />
 
       {/* Main View Container */}
@@ -186,7 +216,35 @@ export const App: React.FC = () => {
       {/* Bottom Mobile Navigation */}
       <Navbar currentTab={currentTab} onSelectTab={setCurrentTab} />
 
-      {/* Modals & Overlays */}
+      {/* Auth Modal (Login / Register) */}
+      {isAuthModalOpen && (
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          canClose={!!currentUser}
+          onClose={() => setIsAuthModalOpen(false)}
+          onSuccess={(_user) => {
+            setIsAuthModalOpen(false);
+          }}
+        />
+      )}
+
+      {/* User Profile Modal */}
+      {isProfileModalOpen && currentUser && (
+        <UserProfileModal
+          isOpen={isProfileModalOpen}
+          user={currentUser}
+          onClose={() => setIsProfileModalOpen(false)}
+          onLogout={() => {
+            AuthService.logout();
+            setIsProfileModalOpen(false);
+          }}
+          onUserUpdated={(updated) => {
+            setCurrentUser(updated);
+          }}
+        />
+      )}
+
+      {/* AI Routine Generator Modal */}
       {isGeneratorOpen && (
         <AIRoutineGeneratorModal
           isOpen={isGeneratorOpen}
@@ -201,6 +259,7 @@ export const App: React.FC = () => {
         />
       )}
 
+      {/* AI Coach Drawer */}
       {isCoachOpen && (
         <AICoachDrawer
           isOpen={isCoachOpen}
@@ -212,6 +271,7 @@ export const App: React.FC = () => {
         />
       )}
 
+      {/* Live Gym Workout Modal */}
       {activeLiveWorkout && (
         <LiveWorkoutModal
           initialSession={activeLiveWorkout}
