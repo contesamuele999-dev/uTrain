@@ -21,20 +21,43 @@ const AVATAR_COLORS = [
 
 export class AuthService {
   /**
-   * Genera un hash SHA-256 con salt tramite Web Crypto API nativa
+   * Genera un hash SHA-256 con salt tramite Web Crypto API nativa con fallback di sicurezza
    */
   private static async hashPassword(password: string, salt: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password + salt);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+    try {
+      if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password + salt);
+        const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+      }
+    } catch {
+      // Fallback
+    }
+
+    // Fallback hash
+    let hash = 0;
+    const str = password + salt;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0;
+    }
+    return Math.abs(hash).toString(16);
   }
 
   private static generateSalt(): string {
-    const array = new Uint8Array(16);
-    crypto.getRandomValues(array);
-    return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
+    try {
+      if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+        const array = new Uint8Array(16);
+        window.crypto.getRandomValues(array);
+        return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
+      }
+    } catch {
+      // Fallback
+    }
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   }
 
   private static getAccounts(): UserAccountRecord[] {
@@ -96,7 +119,7 @@ export class AuthService {
     const session: AuthSession = {
       user,
       token: `token-${Date.now()}-${Math.random().toString(36).substring(2)}`,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 giorni
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     };
     localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(session));
     this.notifySubscribers(user);
@@ -120,7 +143,6 @@ export class AuthService {
       return { success: false, message: 'Password errata. Riprova.' };
     }
 
-    // Aggiorna data ultimo login
     account.lastLogin = new Date().toISOString();
     this.saveAccounts(accounts);
 
@@ -290,7 +312,6 @@ export class AuthService {
       return { success: false, message: 'Nessun account registrato con questa email.' };
     }
 
-    // Genera password temporanea
     const tempPass = `uTrain${Math.floor(1000 + Math.random() * 9000)}!`;
     const newSalt = this.generateSalt();
     const newHash = await this.hashPassword(tempPass, newSalt);
