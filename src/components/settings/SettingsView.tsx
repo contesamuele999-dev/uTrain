@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Key,
   Download,
@@ -11,8 +11,12 @@ import {
   Eye,
   EyeOff,
   Flame,
+  RefreshCw,
+  Server,
 } from 'lucide-react';
 import { StorageService } from '../../services/storage';
+import { ApiClient } from '../../services/apiClient';
+import type { HealthCheckResponse } from '../../services/apiClient';
 import { GeminiService } from '../../services/gemini';
 import { AI_CONFIG } from '../../config/aiConfig';
 import type { UserProfileSettings } from '../../types/workout';
@@ -39,6 +43,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   );
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
+
+  // MongoDB & Cloud Sync State
+  const [dbHealth, setDbHealth] = useState<HealthCheckResponse | null>(null);
+  const [isCheckingDb, setIsCheckingDb] = useState<boolean>(true);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [syncFeedback, setSyncFeedback] = useState<{ success: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    checkDatabaseStatus();
+  }, []);
+
+  const checkDatabaseStatus = async () => {
+    setIsCheckingDb(true);
+    const health = await ApiClient.checkHealth();
+    setDbHealth(health);
+    setIsCheckingDb(false);
+  };
+
+  const handleSyncCloud = async () => {
+    setIsSyncing(true);
+    setSyncFeedback(null);
+    const res = await StorageService.syncWithCloud();
+    setSyncFeedback(res);
+    setIsSyncing(false);
+    await checkDatabaseStatus();
+  };
 
   const handleSaveProfile = () => {
     onUpdateSettings({
@@ -279,6 +309,122 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <button onClick={handleSaveProfile} className="btn-primary" style={{ alignSelf: 'flex-start', padding: '7px 12px', fontSize: '0.8rem' }}>
           Salva Configurazione
         </button>
+      </div>
+
+      {/* MongoDB Database & Cloud Sync */}
+      <div
+        className="glass-card"
+        style={{
+          padding: '14px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          border: dbHealth?.database === 'connected' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid var(--border-subtle)',
+          background: dbHealth?.database === 'connected'
+            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(18, 21, 30, 0.95) 100%)'
+            : 'var(--bg-card)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              borderRadius: 'var(--radius-sm)',
+              background: dbHealth?.database === 'connected'
+                ? 'linear-gradient(135deg, #10b981, #059669)'
+                : 'linear-gradient(135deg, #64748b, #475569)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <Server size={17} color="#fff" />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: '#fff' }}>
+                Database MongoDB
+              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                {isCheckingDb ? (
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Verifica connessione in corso...</span>
+                ) : dbHealth?.database === 'connected' ? (
+                  <span className="chip chip-green" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
+                    <CheckCircle2 size={11} /> Connesso ({dbHealth.databaseUri})
+                  </span>
+                ) : (
+                  <span className="chip" style={{ fontSize: '0.68rem', padding: '2px 8px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                    <AlertCircle size={11} /> Modalità Offline (Cache Locale)
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleSyncCloud}
+              disabled={isSyncing}
+              className="btn-primary"
+              style={{
+                padding: '6px 12px',
+                fontSize: '0.78rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                background: dbHealth?.database === 'connected' ? 'linear-gradient(135deg, #10b981, #059669)' : undefined,
+              }}
+            >
+              <RefreshCw size={13} className={isSyncing ? 'animate-spin' : ''} />
+              {isSyncing ? 'Sincronizzazione...' : 'Sincronizza con MongoDB'}
+            </button>
+            <button
+              type="button"
+              onClick={checkDatabaseStatus}
+              disabled={isCheckingDb}
+              className="btn-ghost"
+              style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+              title="Ricontrolla stato"
+            >
+              Verifica
+            </button>
+          </div>
+        </div>
+
+        {syncFeedback && (
+          <div
+            style={{
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.78rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: syncFeedback.success ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+              color: syncFeedback.success ? 'var(--accent-success)' : 'var(--accent-danger)',
+              border: `1px solid ${syncFeedback.success ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+            }}
+          >
+            {syncFeedback.success ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+            <span>{syncFeedback.message}</span>
+          </div>
+        )}
+
+        <div style={{
+          fontSize: '0.72rem',
+          color: 'var(--text-secondary)',
+          background: 'rgba(0, 0, 0, 0.25)',
+          padding: '8px 10px',
+          borderRadius: 'var(--radius-sm)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+        }}>
+          <div><strong>Configurazione MongoDB:</strong></div>
+          <div>• Per connettere un cluster <strong>MongoDB Atlas (Cloud)</strong> o un'istanza locale, apri il file <code>.env</code> nella cartella del progetto e imposta <code>MONGODB_URI=mongodb+srv://...</code></div>
+          <div>• L'applicazione funziona in modalità <strong>ibrida offline-first</strong>: salva sempre all'istante sul dispositivo e sincronizza sul cloud quando il server è attivo.</div>
+        </div>
       </div>
 
       {/* Data Management & Backup */}

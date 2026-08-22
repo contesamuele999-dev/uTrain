@@ -6,6 +6,7 @@ import type {
   UserProfileSettings,
 } from '../types/workout';
 import { AuthService } from './authService';
+import { ApiClient } from './apiClient';
 import { DEFAULT_EXERCISES } from '../data/defaultExercises';
 import { DEFAULT_ROUTINES } from '../data/defaultRoutines';
 import { DEMO_SESSIONS, DEMO_PRS } from '../data/demoHistory';
@@ -52,6 +53,8 @@ export class StorageService {
     const updated = { ...current, ...settings };
     localStorage.setItem(this.getKey('settings'), JSON.stringify(updated));
     this.notifySubscribers();
+    // Async background sync with MongoDB
+    ApiClient.saveSettings(updated).catch(() => {});
     return updated;
   }
 
@@ -112,16 +115,21 @@ export class StorageService {
   static saveRoutine(routine: Routine): void {
     const routines = this.getRoutines();
     const index = routines.findIndex((r) => r.id === routine.id);
+    let updatedRoutine: Routine;
     if (index >= 0) {
-      routines[index] = { ...routine, updatedAt: new Date().toISOString() };
+      updatedRoutine = { ...routine, updatedAt: new Date().toISOString() };
+      routines[index] = updatedRoutine;
     } else {
-      routines.push({
+      updatedRoutine = {
         ...routine,
         createdAt: routine.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      });
+      };
+      routines.push(updatedRoutine);
     }
     this.saveRoutines(routines);
+    // Background sync with MongoDB
+    ApiClient.saveRoutine(updatedRoutine).catch(() => {});
   }
 
   static deleteRoutine(id: string): void {
@@ -149,6 +157,8 @@ export class StorageService {
     sessions.unshift(session);
     this.saveSessions(sessions);
     this.clearActiveSession();
+    // Background sync with MongoDB
+    ApiClient.saveWorkout(session).catch(() => {});
   }
 
   static deleteSession(sessionId: string): void {
@@ -237,6 +247,74 @@ export class StorageService {
     } catch (e: unknown) {
       const err = e as Error;
       return { success: false, message: `Errore durante il ripristino: ${err.message}` };
+    }
+  }
+
+  // CLOUD / MONGODB FULL SYNC
+  static async syncWithCloud(): Promise<{ success: boolean; message: string; databaseStatus?: string; databaseUri?: string }> {
+    try {
+      const health = await ApiClient.checkHealth();
+      if (!health || health.database !== 'connected') {
+        return {
+          success: false,
+          message: health
+            ? 'MongoDB non raggiungibile (controlla la stringa di connessione in .env).'
+            : 'Server API non raggiungibile (modalità offline / localStorage attiva).',
+          databaseStatus: health ? health.database : 'offline',
+          databaseUri: health ? health.databaseUri : undefined,
+        };
+      }
+
+      // 1. Send all local data to MongoDB
+      const localRoutines = this.getRoutines();
+      const localSessions = this.getSessions();
+      const localExercises = this.getExercises();
+      const localPRs = Object.values(this.getPRs());
+      const localSettings = this.getSettings();
+
+      await ApiClient.syncPush({
+        routines: localRoutines,
+        workouts: localSessions,
+        exercises: localExercises,
+        prs: localPRs,
+        settings: localSettings,
+      });
+
+      // 2. Fetch remote data from MongoDB and merge
+      const remoteData = await ApiClient.syncPull();
+      if (remoteData) {
+        if (Array.isArray(remoteData.routines) && remoteData.routines.length > 0) {
+          this.saveRoutines(remoteData.routines);
+        }
+        if (Array.isArray(remoteData.workouts) && remoteData.workouts.length > 0) {
+          this.saveSessions(remoteData.workouts);
+        }
+        if (Array.isArray(remoteData.prs) && remoteData.prs.length > 0) {
+          const prMap: Record<string, PersonalRecord> = {};
+          remoteData.prs.forEach((p) => {
+            prMap[p.exerciseId] = p;
+          });
+          this.savePRs(prMap);
+        }
+        if (remoteData.settings) {
+          this.saveSettings(remoteData.settings);
+        }
+      }
+
+      this.notifySubscribers();
+
+      return {
+        success: true,
+        message: `Sincronizzazione completata con ${health.databaseUri}!`,
+        databaseStatus: 'connected',
+        databaseUri: health.databaseUri,
+      };
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      return {
+        success: false,
+        message: `Errore durante la sincronizzazione: ${errorMsg}`,
+      };
     }
   }
 
