@@ -16,7 +16,7 @@ import type {
   PersonalRecord,
   UserProfileSettings,
 } from '../../types/workout';
-import { formatDateIt, formatDuration } from '../../utils/calculations';
+import { formatDateIt, formatDuration, countActualExercises } from '../../utils/calculations';
 
 interface DashboardProps {
   settings: UserProfileSettings;
@@ -235,7 +235,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     {session.routineTitle || 'Allenamento Libero'}
                   </div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                    {session.dayName || formatDateIt(session.startTime)} • {session.exercises.length} es. • {session.totalSets} serie
+                    {session.dayName || formatDateIt(session.startTime)} • {countActualExercises(session.exercises)} es. • {session.totalSets} serie
                   </div>
                 </div>
 

@@ -27,6 +27,7 @@ export interface IRoutine extends Document {
       isGroupHeader?: boolean;
       groupType?: string;
       groupName?: string;
+      groupId?: string;
     }>;
   }>;
   isAiGenerated?: boolean;

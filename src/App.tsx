@@ -148,6 +148,7 @@ export const App: React.FC = () => {
           sets,
           notes: ex.notes,
           groupName: ex.groupName,
+          groupId: ex.groupId,
         };
       }),
     };

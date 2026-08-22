@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Play, Dumbbell, ChevronRight, Sparkles } from 'lucide-react';
 import type { Routine, RoutineDay } from '../../types/workout';
+import { isActualExercise, countActualExercises } from '../../utils/calculations';
 
 interface QuickStartCardProps {
   activeRoutine: Routine | undefined;
@@ -146,13 +147,13 @@ export const QuickStartCard: React.FC<QuickStartCardProps> = ({
           {selectedDay.name}
         </div>
         <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-          {selectedDay.exercises.filter((e) => !e.isRestPause).length} Esercizi
+          {countActualExercises(selectedDay.exercises)} {countActualExercises(selectedDay.exercises) === 1 ? 'Esercizio' : 'Esercizi'}
           {selectedDay.exercises.some((e) => e.isRestPause)
             ? ` (+${selectedDay.exercises.filter((e) => e.isRestPause).length} ${selectedDay.exercises.filter((e) => e.isRestPause).length === 1 ? 'pausa' : 'pause'})`
             : ''}
-          : {selectedDay.exercises.filter((e) => !e.isRestPause).map((e) => e.name).slice(0, 3).join(', ')}
-          {selectedDay.exercises.filter((e) => !e.isRestPause).length > 3
-            ? ` + altri ${selectedDay.exercises.filter((e) => !e.isRestPause).length - 3}`
+          : {selectedDay.exercises.filter(isActualExercise).map((e) => e.name).slice(0, 3).join(', ')}
+          {countActualExercises(selectedDay.exercises) > 3
+            ? ` + altri ${countActualExercises(selectedDay.exercises) - 3}`
             : ''}
         </div>
       </div>

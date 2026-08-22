@@ -32,6 +32,7 @@ export interface IWorkoutSession extends Document {
     isGroupHeader?: boolean;
     groupType?: string;
     groupName?: string;
+    groupId?: string;
   }>;
   totalVolumeKg: number;
   totalSets: number;

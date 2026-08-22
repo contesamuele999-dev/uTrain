@@ -55,6 +55,7 @@ export interface RoutineExercise {
   isGroupHeader?: boolean;
   groupType?: 'standard' | 'superset' | 'circuit' | 'warmup' | 'finisher';
   groupName?: string;
+  groupId?: string;
 }
 
 export interface RoutineDay {
@@ -100,6 +101,7 @@ export interface CompletedExerciseLog {
   isGroupHeader?: boolean;
   groupType?: 'standard' | 'superset' | 'circuit' | 'warmup' | 'finisher';
   groupName?: string;
+  groupId?: string;
 }
 
 export interface WorkoutSession {

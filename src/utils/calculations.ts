@@ -169,3 +169,19 @@ export const GOAL_LABELS: Record<string, string> = {
   fat_loss: 'Definizione / Dimagrimento',
   general_fitness: 'Benessere & Fitness Generale',
 };
+
+/**
+ * Determina se un elemento di una scheda o sessione è un vero esercizio (esclude pause e intestazioni gruppo)
+ */
+export function isActualExercise(item?: { isRestPause?: boolean; isGroupHeader?: boolean } | null): boolean {
+  return !!item && !item.isRestPause && !item.isGroupHeader;
+}
+
+/**
+ * Conta il numero effettivo di esercizi escludendo pause e gruppi
+ */
+export function countActualExercises(exercises?: Array<{ isRestPause?: boolean; isGroupHeader?: boolean }> | null): number {
+  if (!exercises) return 0;
+  return exercises.filter(isActualExercise).length;
+}
+

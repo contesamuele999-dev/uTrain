@@ -23,7 +23,7 @@ import { SetRow } from './SetRow';
 import { RestTimer } from './RestTimer';
 import { PlateCalculatorModal } from './PlateCalculatorModal';
 import { WorkoutSummaryModal } from './WorkoutSummaryModal';
-import { formatDuration } from '../../utils/calculations';
+import { formatDuration, isActualExercise } from '../../utils/calculations';
 
 interface LiveWorkoutModalProps {
   initialSession: WorkoutSession;
@@ -514,7 +514,7 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
                       color: 'var(--accent-primary)',
                       fontFamily: 'var(--font-mono)',
                     }}>
-                      #{exIdx + 1}
+                      #{session.exercises.slice(0, exIdx + 1).filter(isActualExercise).length}
                     </span>
                     <h3 style={{ fontSize: '0.96rem', fontWeight: 800, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {exLog.exerciseName}
