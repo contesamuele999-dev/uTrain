@@ -12,6 +12,8 @@ import {
   EyeOff,
   Flame,
   RefreshCw,
+  Smartphone,
+  Wifi,
 } from 'lucide-react';
 import { StorageService } from '../../services/storage';
 import { GeminiService } from '../../services/gemini';
@@ -375,6 +377,58 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             style={{ color: 'var(--accent-danger)', padding: '6px 10px', fontSize: '0.78rem' }}
           >
             <RotateCcw size={14} /> Reset Dati
+          </button>
+        </div>
+      </div>
+
+      {/* PWA & Mobile App Info */}
+      <div className="glass-card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Smartphone size={17} color="#38bdf8" />
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: '#fff' }}>
+              Applicazione PWA & Offline
+            </h3>
+          </div>
+          <span style={{
+            fontSize: '0.7rem',
+            color: '#10b981',
+            background: 'rgba(16, 185, 129, 0.15)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            padding: '2px 8px',
+            borderRadius: 'var(--radius-full)',
+            fontWeight: 700,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+          }}>
+            <Wifi size={12} /> Supporto Offline Attivo
+          </span>
+        </div>
+
+        <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: 0 }}>
+          uTrain è una Progressive Web App: puoi aggiungerla alla schermata Home del tuo smartphone o desktop per usarla a schermo intero senza connessione Internet.
+        </p>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.removeItem('uTrain_pwa_dismissed_count');
+              localStorage.removeItem('uTrain_pwa_dismissed_at');
+              window.location.reload();
+            }}
+            className="btn-secondary"
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.78rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              color: '#38bdf8',
+            }}
+          >
+            <Download size={13} /> Mostra Popup Installazione
           </button>
         </div>
       </div>

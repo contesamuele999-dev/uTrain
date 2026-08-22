@@ -68,8 +68,19 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
   const [newExInstructions, setNewExInstructions] = useState<string>('');
 
   // Drag & Drop State
-  const [draggedItem, setDraggedItem] = useState<{ dayIndex: number; exIndex: number; id: string } | null>(null);
-  const [dragOverTarget, setDragOverTarget] = useState<{ dayIndex: number; exIndex: number; position: 'before' | 'after' | 'inside-group'; targetGroupId?: string } | null>(null);
+  const [draggedItem, setDraggedItem] = useState<{
+    dayIndex: number;
+    exIndex: number;
+    id: string;
+    isGroupHeader?: boolean;
+  } | null>(null);
+
+  const [dragOverTarget, setDragOverTarget] = useState<{
+    dayIndex: number;
+    exIndex: number;
+    position: 'before' | 'after' | 'inside-group';
+    targetGroupId?: string;
+  } | null>(null);
 
   const addDay = () => {
     const newDayNum = days.length + 1;
@@ -113,7 +124,6 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
     };
 
     if (targetGroupId) {
-      // Trova l'ultimo elemento del gruppo per inserire dopo di esso
       let insertIdx = updated[dayIndex].exercises.findIndex((e) => e.id === targetGroupId);
       for (let i = insertIdx + 1; i < updated[dayIndex].exercises.length; i++) {
         if (updated[dayIndex].exercises[i].groupId === targetGroupId) {
@@ -174,7 +184,6 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
     const targetEx = updated[dayIndex].exercises[exIndex];
 
     if (targetEx.isGroupHeader) {
-      // Se si elimina un'intestazione gruppo, scolleghiamo gli esercizi appartenenti al gruppo invece di cancellarli
       const groupHeaderId = targetEx.id;
       updated[dayIndex].exercises = updated[dayIndex].exercises
         .filter((_, i) => i !== exIndex)
@@ -198,7 +207,6 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
       [field]: value,
     };
 
-    // Se stiamo aggiornando il nome di un'intestazione gruppo, aggiorniamo anche groupName degli esercizi figli
     if (currentEx.isGroupHeader && field === 'name') {
       const groupHeaderId = currentEx.id;
       const newName = String(value || '');
@@ -224,7 +232,6 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
     exerciseToMove.groupId = groupHeaderId;
     exerciseToMove.groupName = groupHeader.name;
 
-    // Trova la posizione dopo l'ultimo elemento di questo gruppo
     let targetIdx = exList.findIndex((e) => e.id === groupHeaderId);
     for (let i = targetIdx + 1; i < exList.length; i++) {
       if (exList[i].groupId === groupHeaderId) {
@@ -275,7 +282,6 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
         groupType: 'superset',
         notes: '',
       };
-      // Inserisci l'intestazione subito prima dell'esercizio e assegna il groupId
       exList[exIdx] = {
         ...exList[exIdx],
         groupId: newGroupId,
@@ -319,30 +325,79 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
     setDays(updated);
   };
 
-  // Drag & Drop Handlers
-  const handleDragStart = (e: React.DragEvent, dayIndex: number, exIndex: number, id: string) => {
+  // Drag & Drop Handlers with robust item and group block reordering
+  const handleDragStart = (
+    e: React.DragEvent,
+    dayIndex: number,
+    exIndex: number,
+    id: string,
+    isGroupHeader: boolean = false
+  ) => {
+    e.stopPropagation();
     e.dataTransfer.setData('text/plain', id);
     e.dataTransfer.effectAllowed = 'move';
-    setDraggedItem({ dayIndex, exIndex, id });
+    setDraggedItem({ dayIndex, exIndex, id, isGroupHeader });
   };
 
-  const handleDragOver = (e: React.DragEvent, dayIndex: number, targetIndex: number, position: 'before' | 'after' | 'inside-group', targetGroupId?: string) => {
+  const handleDragOverItem = (
+    e: React.DragEvent,
+    dayIndex: number,
+    exIndex: number,
+    targetGroupId?: string
+  ) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
     if (!draggedItem || draggedItem.dayIndex !== dayIndex) return;
 
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const position: 'before' | 'after' = e.clientY < midY ? 'before' : 'after';
+
     if (
       dragOverTarget?.dayIndex !== dayIndex ||
-      dragOverTarget?.exIndex !== targetIndex ||
+      dragOverTarget?.exIndex !== exIndex ||
       dragOverTarget?.position !== position ||
       dragOverTarget?.targetGroupId !== targetGroupId
     ) {
-      setDragOverTarget({ dayIndex, exIndex: targetIndex, position, targetGroupId });
+      setDragOverTarget({ dayIndex, exIndex, position, targetGroupId });
     }
   };
 
-  const handleDrop = (e: React.DragEvent, dayIndex: number, targetIndex: number, targetGroupId?: string) => {
+  const handleDragOverGroupContainer = (
+    e: React.DragEvent,
+    dayIndex: number,
+    headerIndex: number,
+    groupId: string
+  ) => {
     e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    if (!draggedItem || draggedItem.dayIndex !== dayIndex) return;
+
+    // Se stiamo trascinando lo stesso gruppo sopra se stesso, ignoriamo
+    if (draggedItem.id === groupId) return;
+
+    if (
+      dragOverTarget?.dayIndex !== dayIndex ||
+      dragOverTarget?.exIndex !== headerIndex ||
+      dragOverTarget?.position !== 'inside-group' ||
+      dragOverTarget?.targetGroupId !== groupId
+    ) {
+      setDragOverTarget({ dayIndex, exIndex: headerIndex, position: 'inside-group', targetGroupId: groupId });
+    }
+  };
+
+  const handleDrop = (
+    e: React.DragEvent,
+    dayIndex: number,
+    targetIndex: number,
+    position: 'before' | 'after' | 'inside-group',
+    targetGroupId?: string
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (!draggedItem || draggedItem.dayIndex !== dayIndex) {
       setDraggedItem(null);
       setDragOverTarget(null);
@@ -350,39 +405,93 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
     }
 
     const updated = [...days];
-    const exList = [...updated[dayIndex].exercises];
-    const fromIndex = draggedItem.exIndex;
+    let exList = [...updated[dayIndex].exercises];
+    const fromIdx = draggedItem.exIndex;
+    const itemBeingDragged = exList[fromIdx];
 
-    if (fromIndex === targetIndex && !targetGroupId) {
+    if (!itemBeingDragged) {
       setDraggedItem(null);
       setDragOverTarget(null);
       return;
     }
 
-    const [movedItem] = exList.splice(fromIndex, 1);
+    // SCENARIO 1: Trascinamento di un intero blocco Gruppo (intestazione + tutti gli esercizi del gruppo)
+    if (draggedItem.isGroupHeader || itemBeingDragged.isGroupHeader) {
+      const gId = itemBeingDragged.id;
+      const groupBlockItems: RoutineExercise[] = [];
+      const nonGroupItems: RoutineExercise[] = [];
 
-    // Se spostato all'interno di un gruppo
-    if (targetGroupId) {
-      const groupHeader = exList.find((item) => item.id === targetGroupId);
-      movedItem.groupId = targetGroupId;
-      movedItem.groupName = groupHeader?.name;
-    } else {
-      // Se spostato all'esterno o rilasciato in posizione generica
-      const targetItem = exList[targetIndex];
-      if (targetItem && targetItem.groupId) {
-        movedItem.groupId = targetItem.groupId;
-        movedItem.groupName = targetItem.groupName;
-      } else {
-        movedItem.groupId = undefined;
-        movedItem.groupName = undefined;
+      for (let i = 0; i < exList.length; i++) {
+        const it = exList[i];
+        if (it.id === gId || it.groupId === gId) {
+          groupBlockItems.push(it);
+        } else {
+          nonGroupItems.push(it);
+        }
       }
+
+      // Trova l'indice di destinazione nella lista senza il blocco
+      const refItem = exList[targetIndex];
+      let destIdx = refItem ? nonGroupItems.findIndex((it) => it.id === refItem.id) : -1;
+      if (destIdx === -1) {
+        destIdx = nonGroupItems.length;
+      } else if (position === 'after') {
+        destIdx++;
+      }
+
+      nonGroupItems.splice(destIdx, 0, ...groupBlockItems);
+      updated[dayIndex].exercises = nonGroupItems;
+      setDays(updated);
+      setDraggedItem(null);
+      setDragOverTarget(null);
+      return;
     }
 
-    let insertAt = targetIndex;
-    if (fromIndex < targetIndex) {
-      insertAt = Math.min(targetIndex, exList.length);
+    // SCENARIO 2: Trascinamento di un singolo esercizio o pausa
+    const [itemToMove] = exList.splice(fromIdx, 1);
+
+    // Se rilasciato all'interno di un gruppo (container o esercizio del gruppo)
+    if (position === 'inside-group' || targetGroupId) {
+      const gId = targetGroupId!;
+      const groupHeader = exList.find((it) => it.id === gId);
+      itemToMove.groupId = gId;
+      itemToMove.groupName = groupHeader?.name;
+
+      if (position === 'inside-group') {
+        // Inserisci in coda al gruppo
+        let insertPos = exList.findIndex((it) => it.id === gId);
+        for (let i = insertPos + 1; i < exList.length; i++) {
+          if (exList[i].groupId === gId) {
+            insertPos = i;
+          } else {
+            break;
+          }
+        }
+        exList.splice(insertPos + 1, 0, itemToMove);
+      } else {
+        // Inserisci prima o dopo l'esercizio target all'interno del gruppo
+        let targetInRemaining = exList.findIndex((it) => it.id === exList[targetIndex]?.id);
+        if (targetInRemaining === -1) {
+          targetInRemaining = exList.findIndex((it) => it.id === gId);
+        }
+        if (position === 'after') targetInRemaining++;
+        exList.splice(Math.max(0, targetInRemaining), 0, itemToMove);
+      }
+    } else {
+      // Rilasciato come esercizio standalone (o pausa) all'esterno di qualsiasi gruppo
+      itemToMove.groupId = undefined;
+      itemToMove.groupName = undefined;
+
+      let targetInRemaining = targetIndex;
+      if (fromIdx < targetIndex) {
+        targetInRemaining = Math.max(0, targetIndex - 1);
+      }
+      if (position === 'after') {
+        targetInRemaining++;
+      }
+      targetInRemaining = Math.min(Math.max(0, targetInRemaining), exList.length);
+      exList.splice(targetInRemaining, 0, itemToMove);
     }
-    exList.splice(insertAt, 0, movedItem);
 
     updated[dayIndex].exercises = exList;
     setDays(updated);
@@ -556,7 +665,7 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
           const groupsCount = day.exercises.filter((e) => e.isGroupHeader).length;
           const pausesCount = day.exercises.filter((e) => e.isRestPause).length;
 
-          // Organizzazione per renderizzare gruppi come riquadri compatti
+          // Organizzazione per blocchi logici della giornata
           const processedBlocks: Array<
             | { type: 'group'; groupHeader: RoutineExercise; headerIndex: number; children: Array<{ ex: RoutineExercise; originalIndex: number }> }
             | { type: 'pause'; ex: RoutineExercise; originalIndex: number }
@@ -733,7 +842,7 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
                 </div>
               </div>
 
-              {/* Items in Day: Groups (with visual riquadro), Pauses, and Standalone Exercises */}
+              {/* Items in Day */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {day.exercises.length === 0 ? (
                   <div style={{
@@ -752,399 +861,474 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
                     if (block.type === 'group') {
                       const groupHeader = block.groupHeader;
                       const headerIdx = block.headerIndex;
-                      const isDraggingThis = draggedItem?.id === groupHeader.id;
-                      const isDropTarget = dragOverTarget?.dayIndex === dIdx && dragOverTarget?.targetGroupId === groupHeader.id;
+                      const isDraggingThisGroup = draggedItem?.id === groupHeader.id;
+                      const isInsideGroupDropTarget =
+                        dragOverTarget?.dayIndex === dIdx &&
+                        dragOverTarget?.targetGroupId === groupHeader.id &&
+                        dragOverTarget?.position === 'inside-group';
+
+                      const isDropBeforeHeader =
+                        dragOverTarget?.dayIndex === dIdx &&
+                        dragOverTarget?.exIndex === headerIdx &&
+                        dragOverTarget?.position === 'before';
+
+                      const isDropAfterHeader =
+                        dragOverTarget?.dayIndex === dIdx &&
+                        dragOverTarget?.exIndex === headerIdx &&
+                        dragOverTarget?.position === 'after';
 
                       return (
-                        <div
-                          key={groupHeader.id}
-                          onDragOver={(e) => handleDragOver(e, dIdx, headerIdx, 'inside-group', groupHeader.id)}
-                          onDrop={(e) => handleDrop(e, dIdx, headerIdx, groupHeader.id)}
-                          style={{
-                            background: isDropTarget
-                              ? 'rgba(139, 92, 246, 0.25)'
-                              : 'linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(99, 102, 241, 0.05) 100%)',
-                            border: isDropTarget
-                              ? '2px dashed #a78bfa'
-                              : '1.5px solid rgba(139, 92, 246, 0.45)',
-                            borderRadius: 'var(--radius-md)',
-                            padding: '10px 12px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 10,
-                            boxShadow: '0 4px 16px rgba(139, 92, 246, 0.08)',
-                            opacity: isDraggingThis ? 0.45 : 1,
-                            transition: 'background 0.2s, border 0.2s',
-                          }}
-                        >
-                          {/* Testata Riquadro Gruppo */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, borderBottom: '1px solid rgba(139, 92, 246, 0.25)', paddingBottom: 8 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
-                                {/* Drag handle per l'intero gruppo */}
-                                <div
-                                  draggable
-                                  onDragStart={(e) => handleDragStart(e, dIdx, headerIdx, groupHeader.id)}
-                                  onDragEnd={handleDragEnd}
-                                  style={{
-                                    cursor: 'grab',
+                        <div key={groupHeader.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {isDropBeforeHeader && (
+                            <div style={{
+                              height: 3,
+                              background: 'linear-gradient(90deg, #8b5cf6, #3b82f6)',
+                              borderRadius: 2,
+                              boxShadow: '0 0 8px rgba(139, 92, 246, 0.9)',
+                              margin: '2px 0',
+                            }} />
+                          )}
+
+                          <div
+                            onDragOver={(e) => handleDragOverGroupContainer(e, dIdx, headerIdx, groupHeader.id)}
+                            onDrop={(e) => handleDrop(e, dIdx, headerIdx, 'inside-group', groupHeader.id)}
+                            style={{
+                              background: isInsideGroupDropTarget
+                                ? 'rgba(139, 92, 246, 0.25)'
+                                : 'linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(99, 102, 241, 0.05) 100%)',
+                              border: isInsideGroupDropTarget
+                                ? '2px dashed #c4b5fd'
+                                : '1.5px solid rgba(139, 92, 246, 0.45)',
+                              borderRadius: 'var(--radius-md)',
+                              padding: '10px 12px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 10,
+                              boxShadow: '0 4px 16px rgba(139, 92, 246, 0.08)',
+                              opacity: isDraggingThisGroup ? 0.4 : 1,
+                              transition: 'background 0.15s, border 0.15s',
+                            }}
+                          >
+                            {/* Testata Riquadro Gruppo */}
+                            <div
+                              onDragOver={(e) => handleDragOverItem(e, dIdx, headerIdx)}
+                              onDrop={(e) => handleDrop(e, dIdx, headerIdx, dragOverTarget?.position || 'before')}
+                              style={{ display: 'flex', flexDirection: 'column', gap: 8, borderBottom: '1px solid rgba(139, 92, 246, 0.25)', paddingBottom: 8 }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+                                  {/* Drag handle per l'intero gruppo */}
+                                  <div
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, dIdx, headerIdx, groupHeader.id, true)}
+                                    onDragEnd={handleDragEnd}
+                                    style={{
+                                      cursor: 'grab',
+                                      color: '#c4b5fd',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      padding: '3px 4px',
+                                      borderRadius: 4,
+                                      background: 'rgba(139, 92, 246, 0.18)',
+                                    }}
+                                    title="Trascina per riordinare l'intero gruppo"
+                                  >
+                                    <GripVertical size={16} />
+                                  </div>
+
+                                  <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                                    <button
+                                      onClick={() => moveExercise(dIdx, headerIdx, 'up')}
+                                      disabled={headerIdx === 0}
+                                      style={{ background: 'none', border: 'none', color: headerIdx === 0 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                                      title="Sposta su"
+                                    >
+                                      <ChevronUp size={13} />
+                                    </button>
+                                    <button
+                                      onClick={() => moveExercise(dIdx, headerIdx, 'down')}
+                                      disabled={headerIdx === day.exercises.length - 1}
+                                      style={{ background: 'none', border: 'none', color: headerIdx === day.exercises.length - 1 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                                      title="Sposta giù"
+                                    >
+                                      <ChevronDown size={13} />
+                                    </button>
+                                  </div>
+
+                                  <span style={{
+                                    background: 'rgba(139, 92, 246, 0.3)',
                                     color: '#c4b5fd',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 800,
+                                    padding: '3px 8px',
+                                    borderRadius: 4,
                                     display: 'flex',
                                     alignItems: 'center',
-                                    padding: '2px 4px',
-                                    borderRadius: 3,
+                                    gap: 4,
+                                    flexShrink: 0,
+                                  }}>
+                                    <Layers size={13} /> RIQUADRO GRUPPO
+                                  </span>
+
+                                  <input
+                                    type="text"
+                                    value={groupHeader.name}
+                                    onChange={(e) => updateExerciseProperty(dIdx, headerIdx, 'name', e.target.value)}
+                                    placeholder="Nome Gruppo (es. Superset: Petto + Dorso)"
+                                    style={{
+                                      fontSize: '0.86rem',
+                                      fontWeight: 700,
+                                      color: '#c4b5fd',
+                                      background: 'rgba(0, 0, 0, 0.2)',
+                                      border: '1px solid rgba(139, 92, 246, 0.3)',
+                                      borderRadius: 4,
+                                      padding: '3px 6px',
+                                      flex: 1,
+                                    }}
+                                  />
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{
+                                    fontSize: '0.66rem',
+                                    color: 'var(--text-secondary)',
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    padding: '2px 6px',
+                                    borderRadius: 4,
+                                    fontWeight: 600,
+                                  }}>
+                                    {block.children.length} {block.children.length === 1 ? 'esercizio' : 'esercizi'}
+                                  </span>
+                                  <button
+                                    onClick={() => removeExerciseFromDay(dIdx, headerIdx)}
+                                    className="btn-ghost"
+                                    style={{ color: 'var(--accent-danger)', padding: 2 }}
+                                    title="Elimina gruppo (gli esercizi rimarranno nella scheda)"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Group Settings: Type & Notes */}
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 6 }}>
+                                <div>
+                                  <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>
+                                    Tipo Gruppo / Metodo:
+                                  </span>
+                                  <select
+                                    value={groupHeader.groupType || 'superset'}
+                                    onChange={(e) => updateExerciseProperty(dIdx, headerIdx, 'groupType', e.target.value)}
+                                    style={{ fontSize: '0.78rem', padding: '3px 6px' }}
+                                  >
+                                    <option value="superset">⚡ Superset (2 esercizi consecutivi)</option>
+                                    <option value="circuit">🔄 Circuito (3+ esercizi a round)</option>
+                                    <option value="standard">📁 Sezione / Blocco Esercizi</option>
+                                    <option value="warmup">🔥 Riscaldamento / Warm-up</option>
+                                    <option value="finisher">🏁 Finisher / Burnout Finale</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>
+                                    Istruzioni Superset / Note (Opzionale):
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={groupHeader.notes || ''}
+                                    onChange={(e) => updateExerciseProperty(dIdx, headerIdx, 'notes', e.target.value)}
+                                    placeholder="Es. Esegui in superset senza recupero tra A e B..."
+                                    style={{ fontSize: '0.78rem', padding: '3px 6px' }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Lista degli Esercizi contenuti nel Gruppo */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 4 }}>
+                              {block.children.length === 0 ? (
+                                <div
+                                  style={{
+                                    padding: '12px',
+                                    textAlign: 'center',
+                                    color: '#c4b5fd',
+                                    fontSize: '0.75rem',
+                                    border: '1px dashed rgba(139, 92, 246, 0.4)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    background: 'rgba(139, 92, 246, 0.04)',
                                   }}
-                                  title="Trascina per riordinare il gruppo"
                                 >
-                                  <GripVertical size={16} />
+                                  Nessun esercizio in questo gruppo. Trascina un esercizio qui o usa i pulsanti sotto.
                                 </div>
+                              ) : (
+                                block.children.map(({ ex: childEx, originalIndex: childIdx }, childOrder) => {
+                                  exerciseNumberCounter++;
+                                  const currentExNum = exerciseNumberCounter;
+                                  const isDraggingChild = draggedItem?.id === childEx.id;
 
-                                <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-                                  <button
-                                    onClick={() => moveExercise(dIdx, headerIdx, 'up')}
-                                    disabled={headerIdx === 0}
-                                    style={{ background: 'none', border: 'none', color: headerIdx === 0 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
-                                    title="Sposta su"
-                                  >
-                                    <ChevronUp size={13} />
-                                  </button>
-                                  <button
-                                    onClick={() => moveExercise(dIdx, headerIdx, 'down')}
-                                    disabled={headerIdx === day.exercises.length - 1}
-                                    style={{ background: 'none', border: 'none', color: headerIdx === day.exercises.length - 1 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
-                                    title="Sposta giù"
-                                  >
-                                    <ChevronDown size={13} />
-                                  </button>
-                                </div>
+                                  const isDropBeforeChild =
+                                    dragOverTarget?.dayIndex === dIdx &&
+                                    dragOverTarget?.exIndex === childIdx &&
+                                    dragOverTarget?.position === 'before';
 
-                                <span style={{
-                                  background: 'rgba(139, 92, 246, 0.3)',
+                                  const isDropAfterChild =
+                                    dragOverTarget?.dayIndex === dIdx &&
+                                    dragOverTarget?.exIndex === childIdx &&
+                                    dragOverTarget?.position === 'after';
+
+                                  return (
+                                    <div key={childEx.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                      {isDropBeforeChild && (
+                                        <div style={{
+                                          height: 3,
+                                          background: 'linear-gradient(90deg, #8b5cf6, #3b82f6)',
+                                          borderRadius: 2,
+                                          boxShadow: '0 0 8px rgba(139, 92, 246, 0.9)',
+                                          margin: '1px 0',
+                                        }} />
+                                      )}
+
+                                      <div
+                                        onDragOver={(e) => handleDragOverItem(e, dIdx, childIdx, groupHeader.id)}
+                                        onDrop={(e) => handleDrop(e, dIdx, childIdx, dragOverTarget?.position || 'before', groupHeader.id)}
+                                        style={{
+                                          background: 'var(--bg-card)',
+                                          border: '1px solid rgba(139, 92, 246, 0.3)',
+                                          borderLeft: '3px solid #a78bfa',
+                                          borderRadius: 'var(--radius-sm)',
+                                          padding: '7px 9px',
+                                          display: 'flex',
+                                          flexDirection: 'column',
+                                          gap: 6,
+                                          opacity: isDraggingChild ? 0.4 : 1,
+                                        }}
+                                      >
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+                                            {/* Grip Handle per esercizio nel gruppo */}
+                                            <div
+                                              draggable
+                                              onDragStart={(e) => handleDragStart(e, dIdx, childIdx, childEx.id, false)}
+                                              onDragEnd={handleDragEnd}
+                                              style={{
+                                                cursor: 'grab',
+                                                color: 'var(--text-muted)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                padding: '2px',
+                                              }}
+                                              title="Trascina per riordinare o estrarre dal gruppo"
+                                            >
+                                              <GripVertical size={15} />
+                                            </div>
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                                              <button
+                                                onClick={() => moveExercise(dIdx, childIdx, 'up')}
+                                                disabled={childIdx === 0}
+                                                style={{ background: 'none', border: 'none', color: childIdx === 0 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                                                title="Sposta su"
+                                              >
+                                                <ChevronUp size={12} />
+                                              </button>
+                                              <button
+                                                onClick={() => moveExercise(dIdx, childIdx, 'down')}
+                                                disabled={childIdx === day.exercises.length - 1}
+                                                style={{ background: 'none', border: 'none', color: childIdx === day.exercises.length - 1 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                                                title="Sposta giù"
+                                              >
+                                                <ChevronDown size={12} />
+                                              </button>
+                                            </div>
+
+                                            <span style={{
+                                              fontFamily: 'var(--font-mono)',
+                                              fontSize: '0.72rem',
+                                              fontWeight: 800,
+                                              color: '#a78bfa',
+                                              flexShrink: 0,
+                                            }}>
+                                              {String.fromCharCode(65 + childOrder)}.
+                                            </span>
+
+                                            <div style={{ minWidth: 0, flex: 1 }}>
+                                              <strong style={{ color: '#fff', fontSize: '0.82rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+                                                {childEx.name}
+                                              </strong>
+                                              <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)' }}>
+                                                Esercizio #{currentExNum}
+                                              </span>
+                                            </div>
+                                          </div>
+
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <button
+                                              type="button"
+                                              onClick={() => extractExerciseFromGroup(dIdx, childIdx)}
+                                              className="btn-ghost"
+                                              style={{ fontSize: '0.68rem', padding: '2px 6px', color: '#c4b5fd', background: 'rgba(139, 92, 246, 0.1)' }}
+                                              title="Estrai esercizio dal gruppo (diventa standalone)"
+                                            >
+                                              <LogOut size={12} style={{ transform: 'rotate(180deg)' }} /> Estrai
+                                            </button>
+
+                                            <button
+                                              onClick={() => removeExerciseFromDay(dIdx, childIdx)}
+                                              className="btn-ghost"
+                                              style={{ color: 'var(--accent-danger)', padding: 2 }}
+                                              title="Rimuovi dalla scheda"
+                                            >
+                                              <Trash2 size={13} />
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        {/* Exercise sets / reps inputs */}
+                                        <div style={{
+                                          display: 'grid',
+                                          gridTemplateColumns: 'repeat(4, 1fr)',
+                                          gap: 4,
+                                          alignItems: 'center',
+                                        }}>
+                                          <div>
+                                            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Serie</span>
+                                            <input
+                                              type="number"
+                                              min="1"
+                                              max="20"
+                                              value={childEx.targetSets !== undefined && childEx.targetSets !== null ? childEx.targetSets : ''}
+                                              placeholder="3"
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                updateExerciseProperty(dIdx, childIdx, 'targetSets', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
+                                              }}
+                                              style={{ padding: '3px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
+                                            />
+                                          </div>
+
+                                          <div>
+                                            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Reps Min</span>
+                                            <input
+                                              type="number"
+                                              min="1"
+                                              max="100"
+                                              value={childEx.targetRepsMin !== undefined && childEx.targetRepsMin !== null ? childEx.targetRepsMin : ''}
+                                              placeholder="8"
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                updateExerciseProperty(dIdx, childIdx, 'targetRepsMin', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
+                                              }}
+                                              style={{ padding: '3px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
+                                            />
+                                          </div>
+
+                                          <div>
+                                            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Reps Max</span>
+                                            <input
+                                              type="number"
+                                              min="1"
+                                              max="100"
+                                              value={childEx.targetRepsMax !== undefined && childEx.targetRepsMax !== null ? childEx.targetRepsMax : ''}
+                                              placeholder="10"
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                updateExerciseProperty(dIdx, childIdx, 'targetRepsMax', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
+                                              }}
+                                              style={{ padding: '3px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
+                                            />
+                                          </div>
+
+                                          <div>
+                                            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Recup (s)</span>
+                                            <input
+                                              type="number"
+                                              step="15"
+                                              min="0"
+                                              max="600"
+                                              value={childEx.targetRestSeconds !== undefined && childEx.targetRestSeconds !== null ? childEx.targetRestSeconds : ''}
+                                              placeholder="90"
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                updateExerciseProperty(dIdx, childIdx, 'targetRestSeconds', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
+                                              }}
+                                              style={{ padding: '3px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {isDropAfterChild && (
+                                        <div style={{
+                                          height: 3,
+                                          background: 'linear-gradient(90deg, #8b5cf6, #3b82f6)',
+                                          borderRadius: 2,
+                                          boxShadow: '0 0 8px rgba(139, 92, 246, 0.9)',
+                                          margin: '1px 0',
+                                        }} />
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+
+                            {/* Azioni Riquadro Gruppo */}
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 2 }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setExerciseSearch('');
+                                  setIsCreatingExercise(false);
+                                  setExerciseModalOpen({ dayIndex: dIdx, targetGroupId: groupHeader.id });
+                                }}
+                                style={{
+                                  background: 'rgba(139, 92, 246, 0.2)',
+                                  border: '1px solid rgba(139, 92, 246, 0.45)',
                                   color: '#c4b5fd',
-                                  fontSize: '0.68rem',
-                                  fontWeight: 800,
-                                  padding: '3px 8px',
-                                  borderRadius: 4,
-                                  display: 'flex',
+                                  padding: '4px 8px',
+                                  fontSize: '0.72rem',
+                                  borderRadius: 'var(--radius-sm)',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: 4,
-                                  flexShrink: 0,
-                                }}>
-                                  <Layers size={13} /> RIQUADRO GRUPPO
-                                </span>
-
-                                <input
-                                  type="text"
-                                  value={groupHeader.name}
-                                  onChange={(e) => updateExerciseProperty(dIdx, headerIdx, 'name', e.target.value)}
-                                  placeholder="Nome Gruppo (es. Superset: Petto + Dorso)"
-                                  style={{
-                                    fontSize: '0.86rem',
-                                    fontWeight: 700,
-                                    color: '#c4b5fd',
-                                    background: 'rgba(0, 0, 0, 0.2)',
-                                    border: '1px solid rgba(139, 92, 246, 0.3)',
-                                    borderRadius: 4,
-                                    padding: '3px 6px',
-                                    flex: 1,
-                                  }}
-                                />
-                              </div>
-
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{
-                                  fontSize: '0.66rem',
-                                  color: 'var(--text-secondary)',
-                                  background: 'rgba(255, 255, 255, 0.05)',
-                                  padding: '2px 6px',
-                                  borderRadius: 4,
-                                  fontWeight: 600,
-                                }}>
-                                  {block.children.length} {block.children.length === 1 ? 'esercizio' : 'esercizi'}
-                                </span>
-                                <button
-                                  onClick={() => removeExerciseFromDay(dIdx, headerIdx)}
-                                  className="btn-ghost"
-                                  style={{ color: 'var(--accent-danger)', padding: 2 }}
-                                  title="Elimina gruppo (gli esercizi rimarranno nella scheda)"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Group Settings: Type & Notes */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 6 }}>
-                              <div>
-                                <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>
-                                  Tipo Gruppo / Metodo:
-                                </span>
-                                <select
-                                  value={groupHeader.groupType || 'superset'}
-                                  onChange={(e) => updateExerciseProperty(dIdx, headerIdx, 'groupType', e.target.value)}
-                                  style={{ fontSize: '0.78rem', padding: '3px 6px' }}
-                                >
-                                  <option value="superset">⚡ Superset (2 esercizi consecutivi)</option>
-                                  <option value="circuit">🔄 Circuito (3+ esercizi a round)</option>
-                                  <option value="standard">📁 Sezione / Blocco Esercizi</option>
-                                  <option value="warmup">🔥 Riscaldamento / Warm-up</option>
-                                  <option value="finisher">🏁 Finisher / Burnout Finale</option>
-                                </select>
-                              </div>
-
-                              <div>
-                                <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>
-                                  Istruzioni Superset / Note (Opzionale):
-                                </span>
-                                <input
-                                  type="text"
-                                  value={groupHeader.notes || ''}
-                                  onChange={(e) => updateExerciseProperty(dIdx, headerIdx, 'notes', e.target.value)}
-                                  placeholder="Es. Esegui in superset senza recupero tra A e B..."
-                                  style={{ fontSize: '0.78rem', padding: '3px 6px' }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Lista degli Esercizi contenuti nel Gruppo */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 4 }}>
-                            {block.children.length === 0 ? (
-                              <div
-                                style={{
-                                  padding: '12px',
-                                  textAlign: 'center',
-                                  color: '#c4b5fd',
-                                  fontSize: '0.75rem',
-                                  border: '1px dashed rgba(139, 92, 246, 0.4)',
-                                  borderRadius: 'var(--radius-sm)',
-                                  background: 'rgba(139, 92, 246, 0.04)',
+                                  fontWeight: 700,
                                 }}
                               >
-                                Nessun esercizio in questo gruppo. Trascina un esercizio qui o usa i pulsanti sotto.
-                              </div>
-                            ) : (
-                              block.children.map(({ ex: childEx, originalIndex: childIdx }, childOrder) => {
-                                exerciseNumberCounter++;
-                                const currentExNum = exerciseNumberCounter;
-                                const isDraggingChild = draggedItem?.id === childEx.id;
+                                <Plus size={13} /> Aggiungi Esercizio al Gruppo
+                              </button>
 
-                                return (
-                                  <div
-                                    key={childEx.id}
-                                    onDragOver={(e) => handleDragOver(e, dIdx, childIdx, 'inside-group', groupHeader.id)}
-                                    onDrop={(e) => handleDrop(e, dIdx, childIdx, groupHeader.id)}
-                                    style={{
-                                      background: 'var(--bg-card)',
-                                      border: '1px solid rgba(139, 92, 246, 0.3)',
-                                      borderLeft: '3px solid #a78bfa',
-                                      borderRadius: 'var(--radius-sm)',
-                                      padding: '7px 9px',
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      gap: 6,
-                                      opacity: isDraggingChild ? 0.45 : 1,
-                                    }}
-                                  >
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
-                                        {/* Grip Handle */}
-                                        <div
-                                          draggable
-                                          onDragStart={(e) => handleDragStart(e, dIdx, childIdx, childEx.id)}
-                                          onDragEnd={handleDragEnd}
-                                          style={{ cursor: 'grab', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
-                                          title="Trascina per riordinare o estrarre"
-                                        >
-                                          <GripVertical size={14} />
-                                        </div>
-
-                                        <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-                                          <button
-                                            onClick={() => moveExercise(dIdx, childIdx, 'up')}
-                                            disabled={childIdx === 0}
-                                            style={{ background: 'none', border: 'none', color: childIdx === 0 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
-                                            title="Sposta su"
-                                          >
-                                            <ChevronUp size={12} />
-                                          </button>
-                                          <button
-                                            onClick={() => moveExercise(dIdx, childIdx, 'down')}
-                                            disabled={childIdx === day.exercises.length - 1}
-                                            style={{ background: 'none', border: 'none', color: childIdx === day.exercises.length - 1 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
-                                            title="Sposta giù"
-                                          >
-                                            <ChevronDown size={12} />
-                                          </button>
-                                        </div>
-
-                                        <span style={{
-                                          fontFamily: 'var(--font-mono)',
-                                          fontSize: '0.72rem',
-                                          fontWeight: 800,
-                                          color: '#a78bfa',
-                                          flexShrink: 0,
-                                        }}>
-                                          {String.fromCharCode(65 + childOrder)}.
-                                        </span>
-
-                                        <div style={{ minWidth: 0, flex: 1 }}>
-                                          <strong style={{ color: '#fff', fontSize: '0.82rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
-                                            {childEx.name}
-                                          </strong>
-                                          <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)' }}>
-                                            Esercizio #{currentExNum}
-                                          </span>
-                                        </div>
-                                      </div>
-
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        {/* Button per estrarre dal gruppo */}
-                                        <button
-                                          type="button"
-                                          onClick={() => extractExerciseFromGroup(dIdx, childIdx)}
-                                          className="btn-ghost"
-                                          style={{ fontSize: '0.68rem', padding: '2px 6px', color: '#c4b5fd', background: 'rgba(139, 92, 246, 0.1)' }}
-                                          title="Estrai esercizio dal gruppo (diventa standalone)"
-                                        >
-                                          <LogOut size={12} style={{ transform: 'rotate(180deg)' }} /> Estrai
-                                        </button>
-
-                                        <button
-                                          onClick={() => removeExerciseFromDay(dIdx, childIdx)}
-                                          className="btn-ghost"
-                                          style={{ color: 'var(--accent-danger)', padding: 2 }}
-                                          title="Rimuovi dalla scheda"
-                                        >
-                                          <Trash2 size={13} />
-                                        </button>
-                                      </div>
-                                    </div>
-
-                                    {/* Exercise sets / reps inputs */}
-                                    <div style={{
-                                      display: 'grid',
-                                      gridTemplateColumns: 'repeat(4, 1fr)',
-                                      gap: 4,
-                                      alignItems: 'center',
-                                    }}>
-                                      <div>
-                                        <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Serie</span>
-                                        <input
-                                          type="number"
-                                          min="1"
-                                          max="20"
-                                          value={childEx.targetSets !== undefined && childEx.targetSets !== null ? childEx.targetSets : ''}
-                                          placeholder="3"
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            updateExerciseProperty(dIdx, childIdx, 'targetSets', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
-                                          }}
-                                          style={{ padding: '3px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
-                                        />
-                                      </div>
-
-                                      <div>
-                                        <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Reps Min</span>
-                                        <input
-                                          type="number"
-                                          min="1"
-                                          max="100"
-                                          value={childEx.targetRepsMin !== undefined && childEx.targetRepsMin !== null ? childEx.targetRepsMin : ''}
-                                          placeholder="8"
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            updateExerciseProperty(dIdx, childIdx, 'targetRepsMin', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
-                                          }}
-                                          style={{ padding: '3px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
-                                        />
-                                      </div>
-
-                                      <div>
-                                        <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Reps Max</span>
-                                        <input
-                                          type="number"
-                                          min="1"
-                                          max="100"
-                                          value={childEx.targetRepsMax !== undefined && childEx.targetRepsMax !== null ? childEx.targetRepsMax : ''}
-                                          placeholder="10"
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            updateExerciseProperty(dIdx, childIdx, 'targetRepsMax', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
-                                          }}
-                                          style={{ padding: '3px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
-                                        />
-                                      </div>
-
-                                      <div>
-                                        <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Recup (s)</span>
-                                        <input
-                                          type="number"
-                                          step="15"
-                                          min="0"
-                                          max="600"
-                                          value={childEx.targetRestSeconds !== undefined && childEx.targetRestSeconds !== null ? childEx.targetRestSeconds : ''}
-                                          placeholder="90"
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            updateExerciseProperty(dIdx, childIdx, 'targetRestSeconds', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
-                                          }}
-                                          style={{ padding: '3px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            )}
+                              <button
+                                type="button"
+                                onClick={() => setIncludeExistingModal({ dayIndex: dIdx, groupHeaderId: groupHeader.id, groupName: groupHeader.name })}
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.05)',
+                                  border: '1px solid rgba(139, 92, 246, 0.35)',
+                                  color: '#e2e8f0',
+                                  padding: '4px 8px',
+                                  fontSize: '0.72rem',
+                                  borderRadius: 'var(--radius-sm)',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                <FolderPlus size={13} color="#a78bfa" /> Includi Esercizio Esistente...
+                              </button>
+                            </div>
                           </div>
 
-                          {/* Azioni Riquadro Gruppo: Aggiungi Nuovo o Includi Esistente */}
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingTop: 2 }}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setExerciseSearch('');
-                                setIsCreatingExercise(false);
-                                setExerciseModalOpen({ dayIndex: dIdx, targetGroupId: groupHeader.id });
-                              }}
-                              style={{
-                                background: 'rgba(139, 92, 246, 0.2)',
-                                border: '1px solid rgba(139, 92, 246, 0.45)',
-                                color: '#c4b5fd',
-                                padding: '4px 8px',
-                                fontSize: '0.72rem',
-                                borderRadius: 'var(--radius-sm)',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                fontWeight: 700,
-                              }}
-                            >
-                              <Plus size={13} /> Aggiungi Esercizio al Gruppo
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => setIncludeExistingModal({ dayIndex: dIdx, groupHeaderId: groupHeader.id, groupName: groupHeader.name })}
-                              style={{
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                border: '1px solid rgba(139, 92, 246, 0.35)',
-                                color: '#e2e8f0',
-                                padding: '4px 8px',
-                                fontSize: '0.72rem',
-                                borderRadius: 'var(--radius-sm)',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                fontWeight: 600,
-                              }}
-                            >
-                              <FolderPlus size={13} color="#a78bfa" /> Includi Esercizio Esistente...
-                            </button>
-                          </div>
+                          {isDropAfterHeader && (
+                            <div style={{
+                              height: 3,
+                              background: 'linear-gradient(90deg, #8b5cf6, #3b82f6)',
+                              borderRadius: 2,
+                              boxShadow: '0 0 8px rgba(139, 92, 246, 0.9)',
+                              margin: '2px 0',
+                            }} />
+                          )}
                         </div>
                       );
                     }
@@ -1153,136 +1337,173 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
                     if (block.type === 'pause') {
                       const pauseEx = block.ex;
                       const pauseIdx = block.originalIndex;
-                      const isDraggingThis = draggedItem?.id === pauseEx.id;
+                      const isDraggingPause = draggedItem?.id === pauseEx.id;
+
+                      const isDropBeforePause =
+                        dragOverTarget?.dayIndex === dIdx &&
+                        dragOverTarget?.exIndex === pauseIdx &&
+                        dragOverTarget?.position === 'before';
+
+                      const isDropAfterPause =
+                        dragOverTarget?.dayIndex === dIdx &&
+                        dragOverTarget?.exIndex === pauseIdx &&
+                        dragOverTarget?.position === 'after';
 
                       return (
-                        <div
-                          key={pauseEx.id}
-                          onDragOver={(e) => handleDragOver(e, dIdx, pauseIdx, 'before')}
-                          onDrop={(e) => handleDrop(e, dIdx, pauseIdx)}
-                          style={{
-                            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.09) 0%, rgba(217, 119, 6, 0.04) 100%)',
-                            border: '1px solid rgba(245, 158, 11, 0.35)',
-                            borderRadius: 'var(--radius-sm)',
-                            padding: '8px 10px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 8,
-                            opacity: isDraggingThis ? 0.45 : 1,
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
-                              {/* Grip Handle */}
-                              <div
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, dIdx, pauseIdx, pauseEx.id)}
-                                onDragEnd={handleDragEnd}
-                                style={{ cursor: 'grab', color: '#fbbf24', display: 'flex', alignItems: 'center' }}
-                                title="Trascina per riordinare"
-                              >
-                                <GripVertical size={15} />
-                              </div>
+                        <div key={pauseEx.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {isDropBeforePause && (
+                            <div style={{
+                              height: 3,
+                              background: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
+                              borderRadius: 2,
+                              boxShadow: '0 0 8px rgba(245, 158, 11, 0.9)',
+                              margin: '1px 0',
+                            }} />
+                          )}
 
-                              <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-                                <button
-                                  onClick={() => moveExercise(dIdx, pauseIdx, 'up')}
-                                  disabled={pauseIdx === 0}
-                                  style={{ background: 'none', border: 'none', color: pauseIdx === 0 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
-                                  title="Sposta su"
+                          <div
+                            onDragOver={(e) => handleDragOverItem(e, dIdx, pauseIdx)}
+                            onDrop={(e) => handleDrop(e, dIdx, pauseIdx, dragOverTarget?.position || 'before')}
+                            style={{
+                              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.09) 0%, rgba(217, 119, 6, 0.04) 100%)',
+                              border: '1px solid rgba(245, 158, 11, 0.35)',
+                              borderRadius: 'var(--radius-sm)',
+                              padding: '8px 10px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 8,
+                              opacity: isDraggingPause ? 0.4 : 1,
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+                                {/* Grip Handle */}
+                                <div
+                                  draggable
+                                  onDragStart={(e) => handleDragStart(e, dIdx, pauseIdx, pauseEx.id, false)}
+                                  onDragEnd={handleDragEnd}
+                                  style={{
+                                    cursor: 'grab',
+                                    color: '#fbbf24',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: '2px',
+                                  }}
+                                  title="Trascina per riordinare"
                                 >
-                                  <ChevronUp size={13} />
-                                </button>
-                                <button
-                                  onClick={() => moveExercise(dIdx, pauseIdx, 'down')}
-                                  disabled={pauseIdx === day.exercises.length - 1}
-                                  style={{ background: 'none', border: 'none', color: pauseIdx === day.exercises.length - 1 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
-                                  title="Sposta giù"
-                                >
-                                  <ChevronDown size={13} />
-                                </button>
-                              </div>
+                                  <GripVertical size={15} />
+                                </div>
 
-                              <span style={{
-                                background: 'rgba(245, 158, 11, 0.25)',
-                                color: '#fbbf24',
-                                fontSize: '0.66rem',
-                                fontWeight: 800,
-                                padding: '2px 6px',
-                                borderRadius: 4,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                flexShrink: 0,
-                              }}>
-                                <Timer size={12} /> PAUSA
-                              </span>
+                                <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                                  <button
+                                    onClick={() => moveExercise(dIdx, pauseIdx, 'up')}
+                                    disabled={pauseIdx === 0}
+                                    style={{ background: 'none', border: 'none', color: pauseIdx === 0 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                                    title="Sposta su"
+                                  >
+                                    <ChevronUp size={13} />
+                                  </button>
+                                  <button
+                                    onClick={() => moveExercise(dIdx, pauseIdx, 'down')}
+                                    disabled={pauseIdx === day.exercises.length - 1}
+                                    style={{ background: 'none', border: 'none', color: pauseIdx === day.exercises.length - 1 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                                    title="Sposta giù"
+                                  >
+                                    <ChevronDown size={13} />
+                                  </button>
+                                </div>
 
-                              <input
-                                type="text"
-                                value={pauseEx.name}
-                                onChange={(e) => updateExerciseProperty(dIdx, pauseIdx, 'name', e.target.value)}
-                                placeholder="Nome blocco pausa (es. Pausa / Recupero)"
-                                style={{
-                                  fontSize: '0.82rem',
-                                  fontWeight: 700,
+                                <span style={{
+                                  background: 'rgba(245, 158, 11, 0.25)',
                                   color: '#fbbf24',
-                                  background: 'transparent',
-                                  border: '1px solid transparent',
-                                  padding: '2px 4px',
-                                  flex: 1,
-                                }}
-                              />
-                            </div>
+                                  fontSize: '0.66rem',
+                                  fontWeight: 800,
+                                  padding: '2px 6px',
+                                  borderRadius: 4,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  flexShrink: 0,
+                                }}>
+                                  <Timer size={12} /> PAUSA
+                                </span>
 
-                            <button
-                              onClick={() => removeExerciseFromDay(dIdx, pauseIdx)}
-                              className="btn-ghost"
-                              style={{ color: 'var(--accent-danger)', padding: 2 }}
-                              title="Elimina blocco pausa"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
+                                <input
+                                  type="text"
+                                  value={pauseEx.name}
+                                  onChange={(e) => updateExerciseProperty(dIdx, pauseIdx, 'name', e.target.value)}
+                                  placeholder="Nome blocco pausa (es. Pausa / Recupero)"
+                                  style={{
+                                    fontSize: '0.82rem',
+                                    fontWeight: 700,
+                                    color: '#fbbf24',
+                                    background: 'transparent',
+                                    border: '1px solid transparent',
+                                    padding: '2px 4px',
+                                    flex: 1,
+                                  }}
+                                />
+                              </div>
 
-                          {/* Pause settings: Duration & Notes */}
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 6 }}>
-                            <div>
-                              <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>
-                                Durata Pausa:
-                              </span>
-                              <select
-                                value={pauseEx.restDurationSeconds || 120}
-                                onChange={(e) => updateExerciseProperty(dIdx, pauseIdx, 'restDurationSeconds', parseInt(e.target.value) || 120)}
-                                style={{ fontSize: '0.78rem', padding: '3px 6px' }}
+                              <button
+                                onClick={() => removeExerciseFromDay(dIdx, pauseIdx)}
+                                className="btn-ghost"
+                                style={{ color: 'var(--accent-danger)', padding: 2 }}
+                                title="Elimina blocco pausa"
                               >
-                                <option value="30">30 secondi</option>
-                                <option value="45">45 secondi</option>
-                                <option value="60">1 minuto (60s)</option>
-                                <option value="90">1.5 minuti (90s)</option>
-                                <option value="120">2 minuti (120s)</option>
-                                <option value="150">2.5 minuti (150s)</option>
-                                <option value="180">3 minuti (180s)</option>
-                                <option value="240">4 minuti (240s)</option>
-                                <option value="300">5 minuti (300s)</option>
-                                <option value="420">7 minuti (420s)</option>
-                                <option value="600">10 minuti (600s)</option>
-                              </select>
+                                <Trash2 size={14} />
+                              </button>
                             </div>
 
-                            <div>
-                              <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>
-                                Note / Istruzioni (Opzionale):
-                              </span>
-                              <input
-                                type="text"
-                                value={pauseEx.notes || ''}
-                                onChange={(e) => updateExerciseProperty(dIdx, pauseIdx, 'notes', e.target.value)}
-                                placeholder="Es. Idratazione, preparazione carico..."
-                                style={{ fontSize: '0.78rem', padding: '3px 6px' }}
-                              />
+                            {/* Pause settings: Duration & Notes */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 6 }}>
+                              <div>
+                                <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>
+                                  Durata Pausa:
+                                </span>
+                                <select
+                                  value={pauseEx.restDurationSeconds || 120}
+                                  onChange={(e) => updateExerciseProperty(dIdx, pauseIdx, 'restDurationSeconds', parseInt(e.target.value) || 120)}
+                                  style={{ fontSize: '0.78rem', padding: '3px 6px' }}
+                                >
+                                  <option value="30">30 secondi</option>
+                                  <option value="45">45 secondi</option>
+                                  <option value="60">1 minuto (60s)</option>
+                                  <option value="90">1.5 minuti (90s)</option>
+                                  <option value="120">2 minuti (120s)</option>
+                                  <option value="150">2.5 minuti (150s)</option>
+                                  <option value="180">3 minuti (180s)</option>
+                                  <option value="240">4 minuti (240s)</option>
+                                  <option value="300">5 minuti (300s)</option>
+                                  <option value="420">7 minuti (420s)</option>
+                                  <option value="600">10 minuti (600s)</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>
+                                  Note / Istruzioni (Opzionale):
+                                </span>
+                                <input
+                                  type="text"
+                                  value={pauseEx.notes || ''}
+                                  onChange={(e) => updateExerciseProperty(dIdx, pauseIdx, 'notes', e.target.value)}
+                                  placeholder="Es. Idratazione, preparazione carico..."
+                                  style={{ fontSize: '0.78rem', padding: '3px 6px' }}
+                                />
+                              </div>
                             </div>
                           </div>
+
+                          {isDropAfterPause && (
+                            <div style={{
+                              height: 3,
+                              background: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
+                              borderRadius: 2,
+                              boxShadow: '0 0 8px rgba(245, 158, 11, 0.9)',
+                              margin: '1px 0',
+                            }} />
+                          )}
                         </div>
                       );
                     }
@@ -1292,175 +1513,211 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
                     const standIdx = block.originalIndex;
                     exerciseNumberCounter++;
                     const currentExNum = exerciseNumberCounter;
-                    const isDraggingThis = draggedItem?.id === standEx.id;
+                    const isDraggingStand = draggedItem?.id === standEx.id;
+
+                    const isDropBeforeStand =
+                      dragOverTarget?.dayIndex === dIdx &&
+                      dragOverTarget?.exIndex === standIdx &&
+                      dragOverTarget?.position === 'before';
+
+                    const isDropAfterStand =
+                      dragOverTarget?.dayIndex === dIdx &&
+                      dragOverTarget?.exIndex === standIdx &&
+                      dragOverTarget?.position === 'after';
 
                     return (
-                      <div
-                        key={standEx.id}
-                        onDragOver={(e) => handleDragOver(e, dIdx, standIdx, 'before')}
-                        onDrop={(e) => handleDrop(e, dIdx, standIdx)}
-                        style={{
-                          background: 'var(--bg-card)',
-                          border: '1px solid var(--border-subtle)',
-                          borderRadius: 'var(--radius-sm)',
-                          padding: '8px 10px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 6,
-                          opacity: isDraggingThis ? 0.45 : 1,
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
-                            {/* Grip Handle */}
-                            <div
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, dIdx, standIdx, standEx.id)}
-                              onDragEnd={handleDragEnd}
-                              style={{ cursor: 'grab', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
-                              title="Trascina per riordinare o trascinare in un gruppo"
-                            >
-                              <GripVertical size={15} />
+                      <div key={standEx.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {isDropBeforeStand && (
+                          <div style={{
+                            height: 3,
+                            background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
+                            borderRadius: 2,
+                            boxShadow: '0 0 8px rgba(59, 130, 246, 0.9)',
+                            margin: '1px 0',
+                          }} />
+                        )}
+
+                        <div
+                          onDragOver={(e) => handleDragOverItem(e, dIdx, standIdx)}
+                          onDrop={(e) => handleDrop(e, dIdx, standIdx, dragOverTarget?.position || 'before')}
+                          style={{
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '8px 10px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 6,
+                            opacity: isDraggingStand ? 0.4 : 1,
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+                              {/* Grip Handle */}
+                              <div
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, dIdx, standIdx, standEx.id, false)}
+                                onDragEnd={handleDragEnd}
+                                style={{
+                                  cursor: 'grab',
+                                  color: 'var(--text-muted)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  padding: '2px',
+                                }}
+                                title="Trascina per riordinare o trascinare in un gruppo"
+                              >
+                                <GripVertical size={15} />
+                              </div>
+
+                              <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                                <button
+                                  onClick={() => moveExercise(dIdx, standIdx, 'up')}
+                                  disabled={standIdx === 0}
+                                  style={{ background: 'none', border: 'none', color: standIdx === 0 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                                  title="Sposta su"
+                                >
+                                  <ChevronUp size={13} />
+                                </button>
+                                <button
+                                  onClick={() => moveExercise(dIdx, standIdx, 'down')}
+                                  disabled={standIdx === day.exercises.length - 1}
+                                  style={{ background: 'none', border: 'none', color: standIdx === day.exercises.length - 1 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                                  title="Sposta giù"
+                                >
+                                  <ChevronDown size={13} />
+                                </button>
+                              </div>
+
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <strong style={{ color: '#fff', fontSize: '0.84rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+                                  {currentExNum}. {standEx.name}
+                                </strong>
+                              </div>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                               <button
-                                onClick={() => moveExercise(dIdx, standIdx, 'up')}
-                                disabled={standIdx === 0}
-                                style={{ background: 'none', border: 'none', color: standIdx === 0 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
-                                title="Sposta su"
+                                type="button"
+                                onClick={() => setAssignToGroupModal({ dayIndex: dIdx, exId: standEx.id })}
+                                className="btn-ghost"
+                                style={{
+                                  fontSize: '0.68rem',
+                                  padding: '3px 6px',
+                                  color: '#c4b5fd',
+                                  background: 'rgba(139, 92, 246, 0.08)',
+                                  border: '1px dashed rgba(139, 92, 246, 0.35)',
+                                  borderRadius: 3,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 3,
+                                }}
+                                title="Aggiungi questo esercizio a un gruppo / superset"
                               >
-                                <ChevronUp size={13} />
+                                <Layers size={11} /> Gruppo...
                               </button>
-                              <button
-                                onClick={() => moveExercise(dIdx, standIdx, 'down')}
-                                disabled={standIdx === day.exercises.length - 1}
-                                style={{ background: 'none', border: 'none', color: standIdx === day.exercises.length - 1 ? 'var(--border-subtle)' : 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
-                                title="Sposta giù"
-                              >
-                                <ChevronDown size={13} />
-                              </button>
-                            </div>
 
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <strong style={{ color: '#fff', fontSize: '0.84rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
-                                {currentExNum}. {standEx.name}
-                              </strong>
+                              <button
+                                onClick={() => removeExerciseFromDay(dIdx, standIdx)}
+                                className="btn-ghost"
+                                style={{ color: 'var(--accent-danger)', padding: 2 }}
+                                title="Rimuovi esercizio"
+                              >
+                                <Trash2 size={14} />
+                              </button>
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            {/* Pulsante rapido per aggiungere a un gruppo */}
-                            <button
-                              type="button"
-                              onClick={() => setAssignToGroupModal({ dayIndex: dIdx, exId: standEx.id })}
-                              className="btn-ghost"
-                              style={{
-                                fontSize: '0.68rem',
-                                padding: '3px 6px',
-                                color: '#c4b5fd',
-                                background: 'rgba(139, 92, 246, 0.08)',
-                                border: '1px dashed rgba(139, 92, 246, 0.35)',
-                                borderRadius: 3,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 3,
-                              }}
-                              title="Aggiungi questo esercizio a un gruppo / superset"
-                            >
-                              <Layers size={11} /> Gruppo...
-                            </button>
+                          {/* Exercise targets inputs */}
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(4, 1fr)',
+                            gap: 4,
+                            alignItems: 'center',
+                          }}>
+                            <div>
+                              <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Serie</span>
+                              <input
+                                type="number"
+                                min="1"
+                                max="20"
+                                value={standEx.targetSets !== undefined && standEx.targetSets !== null ? standEx.targetSets : ''}
+                                placeholder="3"
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  updateExerciseProperty(dIdx, standIdx, 'targetSets', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
+                                }}
+                                style={{ padding: '4px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}
+                              />
+                            </div>
 
-                            <button
-                              onClick={() => removeExerciseFromDay(dIdx, standIdx)}
-                              className="btn-ghost"
-                              style={{ color: 'var(--accent-danger)', padding: 2 }}
-                              title="Rimuovi esercizio"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            <div>
+                              <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Reps Min</span>
+                              <input
+                                type="number"
+                                min="1"
+                                max="100"
+                                value={standEx.targetRepsMin !== undefined && standEx.targetRepsMin !== null ? standEx.targetRepsMin : ''}
+                                placeholder="8"
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  updateExerciseProperty(dIdx, standIdx, 'targetRepsMin', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
+                                }}
+                                style={{ padding: '4px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}
+                              />
+                            </div>
+
+                            <div>
+                              <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Reps Max</span>
+                              <input
+                                type="number"
+                                min="1"
+                                max="100"
+                                value={standEx.targetRepsMax !== undefined && standEx.targetRepsMax !== null ? standEx.targetRepsMax : ''}
+                                placeholder="10"
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  updateExerciseProperty(dIdx, standIdx, 'targetRepsMax', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
+                                }}
+                                style={{ padding: '4px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}
+                              />
+                            </div>
+
+                            <div>
+                              <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Recup (s)</span>
+                              <input
+                                type="number"
+                                step="15"
+                                min="0"
+                                max="600"
+                                value={standEx.targetRestSeconds !== undefined && standEx.targetRestSeconds !== null ? standEx.targetRestSeconds : ''}
+                                placeholder="90"
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  updateExerciseProperty(dIdx, standIdx, 'targetRestSeconds', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
+                                }}
+                                style={{ padding: '4px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}
+                              />
+                            </div>
                           </div>
                         </div>
 
-                        {/* Exercise targets inputs */}
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(4, 1fr)',
-                          gap: 4,
-                          alignItems: 'center',
-                        }}>
-                          <div>
-                            <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Serie</span>
-                            <input
-                              type="number"
-                              min="1"
-                              max="20"
-                              value={standEx.targetSets !== undefined && standEx.targetSets !== null ? standEx.targetSets : ''}
-                              placeholder="3"
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                updateExerciseProperty(dIdx, standIdx, 'targetSets', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
-                              }}
-                              style={{ padding: '4px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}
-                            />
-                          </div>
-
-                          <div>
-                            <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Reps Min</span>
-                            <input
-                              type="number"
-                              min="1"
-                              max="100"
-                              value={standEx.targetRepsMin !== undefined && standEx.targetRepsMin !== null ? standEx.targetRepsMin : ''}
-                              placeholder="8"
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                updateExerciseProperty(dIdx, standIdx, 'targetRepsMin', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
-                              }}
-                              style={{ padding: '4px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}
-                            />
-                          </div>
-
-                          <div>
-                            <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Reps Max</span>
-                            <input
-                              type="number"
-                              min="1"
-                              max="100"
-                              value={standEx.targetRepsMax !== undefined && standEx.targetRepsMax !== null ? standEx.targetRepsMax : ''}
-                              placeholder="10"
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                updateExerciseProperty(dIdx, standIdx, 'targetRepsMax', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
-                              }}
-                              style={{ padding: '4px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}
-                            />
-                          </div>
-
-                          <div>
-                            <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center' }}>Recup (s)</span>
-                            <input
-                              type="number"
-                              step="15"
-                              min="0"
-                              max="600"
-                              value={standEx.targetRestSeconds !== undefined && standEx.targetRestSeconds !== null ? standEx.targetRestSeconds : ''}
-                              placeholder="90"
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                updateExerciseProperty(dIdx, standIdx, 'targetRestSeconds', val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0));
-                              }}
-                              style={{ padding: '4px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}
-                            />
-                          </div>
-                        </div>
+                        {isDropAfterStand && (
+                          <div style={{
+                            height: 3,
+                            background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
+                            borderRadius: 2,
+                            boxShadow: '0 0 8px rgba(59, 130, 246, 0.9)',
+                            margin: '1px 0',
+                          }} />
+                        )}
                       </div>
                     );
                   })
                 )}
               </div>
 
-              {/* Action Buttons: Add Exercise, Add Group & Add Pause Divider */}
+              {/* Action Buttons */}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
                   type="button"

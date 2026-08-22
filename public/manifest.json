@@ -1,0 +1,65 @@
+{
+  "id": "/?source=pwa",
+  "name": "uTrain • AI Workout Tracker",
+  "short_name": "uTrain",
+  "description": "Crea schede di allenamento scientifiche, traccia i tuoi carichi in tempo reale, visualizza grafici di progressione 1RM e ricevi consigli di sovraccarico progressivo con AI.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#090a0f",
+  "theme_color": "#090a0f",
+  "orientation": "portrait",
+  "lang": "it-IT",
+  "dir": "ltr",
+  "categories": ["fitness", "health", "sports", "lifestyle"],
+  "icons": [
+    {
+      "src": "./pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Avvia Allenamento",
+      "short_name": "Allenati",
+      "description": "Inizia la sessione di allenamento di oggi",
+      "url": "./#workout",
+      "icons": [{ "src": "./pwa-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Le Mie Schede",
+      "short_name": "Schede",
+      "description": "Gestisci e modifica le tue schede di allenamento",
+      "url": "./#routines",
+      "icons": [{ "src": "./pwa-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Grafici e Progressione",
+      "short_name": "Analisi",
+      "description": "Analizza il sovraccarico progressivo e massimali 1RM",
+      "url": "./#analytics",
+      "icons": [{ "src": "./pwa-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

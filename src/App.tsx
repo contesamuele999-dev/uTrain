@@ -14,6 +14,7 @@ import { AICoachDrawer } from './components/coach/AICoachDrawer';
 import { SettingsView } from './components/settings/SettingsView';
 import { AuthModal } from './components/auth/AuthModal';
 import { UserProfileModal } from './components/auth/UserProfileModal';
+import { PwaInstallPrompt } from './components/common/PwaInstallPrompt';
 
 import { AuthService } from './services/authService';
 import { StorageService } from './services/storage';
@@ -309,6 +310,9 @@ export const App: React.FC = () => {
           onCancel={() => setActiveLiveWorkout(null)}
         />
       )}
+
+      {/* PWA Download & First-Access Install Prompt */}
+      <PwaInstallPrompt />
     </div>
   );
 };
