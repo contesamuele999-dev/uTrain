@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Key,
   Download,
@@ -12,15 +12,8 @@ import {
   EyeOff,
   Flame,
   RefreshCw,
-  Server,
-  Copy,
-  Check,
-  Zap,
 } from 'lucide-react';
 import { StorageService } from '../../services/storage';
-import { ApiClient } from '../../services/apiClient';
-import type { HealthCheckResponse } from '../../services/apiClient';
-import { SupabaseService } from '../../services/supabase';
 import { GeminiService } from '../../services/gemini';
 import { AI_CONFIG } from '../../config/aiConfig';
 import type { UserProfileSettings } from '../../types/workout';
@@ -47,58 +40,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   );
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
-
-  // Supabase Cloud State
-  const [supabaseUrl, setSupabaseUrl] = useState<string>(() => SupabaseService.getCredentials().url);
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState<string>(() => SupabaseService.getCredentials().anonKey);
-  const [showSupabaseKey, setShowSupabaseKey] = useState<boolean>(false);
-  const [supabaseStatus, setSupabaseStatus] = useState<{ connected: boolean; message: string } | null>(null);
-  const [isTestingSupabase, setIsTestingSupabase] = useState<boolean>(false);
-  const [copiedSql, setCopiedSql] = useState<boolean>(false);
-
-  // MongoDB & Backend State
-  const [dbHealth, setDbHealth] = useState<HealthCheckResponse | null>(null);
-  const [isCheckingDb, setIsCheckingDb] = useState<boolean>(true);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [syncFeedback, setSyncFeedback] = useState<{ success: boolean; message: string } | null>(null);
-  const [customApiUrl, setCustomApiUrl] = useState<string>(() => ApiClient.getCustomApiUrl());
-
-  useEffect(() => {
-    checkDatabaseStatus();
-    checkSupabaseStatus();
-  }, []);
-
-  const checkSupabaseStatus = async () => {
-    if (!SupabaseService.isConfigured()) {
-      setSupabaseStatus(null);
-      return;
-    }
-    setIsTestingSupabase(true);
-    const res = await SupabaseService.checkConnection();
-    setSupabaseStatus(res);
-    setIsTestingSupabase(false);
-  };
-
-  const handleSaveSupabase = async () => {
-    SupabaseService.saveCredentials(supabaseUrl, supabaseAnonKey);
-    setIsTestingSupabase(true);
-    const res = await SupabaseService.checkConnection();
-    setSupabaseStatus(res);
-    setIsTestingSupabase(false);
-  };
-
-  const handleCopySql = () => {
-    navigator.clipboard.writeText(SupabaseService.getSetupSQL());
-    setCopiedSql(true);
-    setTimeout(() => setCopiedSql(false), 2500);
-  };
-
-  const checkDatabaseStatus = async () => {
-    setIsCheckingDb(true);
-    const health = await ApiClient.checkHealth();
-    setDbHealth(health);
-    setIsCheckingDb(false);
-  };
 
   const handleSyncCloud = async () => {
     setIsSyncing(true);
@@ -106,8 +49,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const res = await StorageService.syncWithCloud();
     setSyncFeedback(res);
     setIsSyncing(false);
-    await checkDatabaseStatus();
-    await checkSupabaseStatus();
   };
 
   const handleSaveProfile = () => {
@@ -351,242 +292,38 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </button>
       </div>
 
-      {/* Supabase Cloud Database (Zero Server - Works 100% on GitHub Pages & Phone) */}
-      <div
-        className="glass-card"
-        style={{
-          padding: '14px 16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-          border: supabaseStatus?.connected ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid rgba(59, 130, 246, 0.4)',
-          background: supabaseStatus?.connected
-            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(6, 78, 59, 0.25) 100%)'
-            : 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(18, 21, 30, 0.95) 100%)',
-        }}
-      >
+      {/* Data Management & Backup */}
+      <div className="glass-card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              width: 32,
-              height: 32,
-              borderRadius: 'var(--radius-sm)',
-              background: 'linear-gradient(135deg, #10b981, #06b6d4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <Zap size={18} color="#fff" />
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <h3 style={{ fontSize: '0.98rem', fontWeight: 800, margin: 0, color: '#fff' }}>
-                  Supabase Cloud Database
-                </h3>
-                <span className="chip chip-green" style={{ fontSize: '0.64rem', padding: '1px 6px' }}>
-                  ⚡ Consigliato per GitHub Pages
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                {isTestingSupabase ? (
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Verifica connessione Supabase...</span>
-                ) : supabaseStatus?.connected ? (
-                  <span className="chip chip-green" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
-                    <CheckCircle2 size={11} /> Connesso a Supabase Cloud (PostgreSQL)
-                  </span>
-                ) : (
-                  <span className="chip" style={{ fontSize: '0.68rem', padding: '2px 8px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-                    <AlertCircle size={11} /> {supabaseStatus?.message || 'Configura Project URL & Anon Key'}
-                  </span>
-                )}
-              </div>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Database size={17} color="var(--accent-primary)" />
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: '#fff' }}>
+              Dati & Backup
+            </h3>
           </div>
 
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={handleSyncCloud}
-              disabled={isSyncing}
-              className="btn-primary"
-              style={{
-                padding: '6px 12px',
-                fontSize: '0.78rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                background: 'linear-gradient(135deg, #10b981, #059669)',
-              }}
-            >
-              <RefreshCw size={13} className={isSyncing ? 'animate-spin' : ''} />
-              {isSyncing ? 'Sincronizzazione...' : 'Sincronizza con Supabase'}
-            </button>
-            <button
-              type="button"
-              onClick={handleCopySql}
-              className="btn-secondary"
-              style={{ padding: '6px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-              title="Copia il codice SQL per creare la tabella in Supabase"
-            >
-              {copiedSql ? <Check size={13} color="var(--accent-success)" /> : <Copy size={13} />}
-              {copiedSql ? 'SQL Copiato!' : 'Copia Script Tabella SQL'}
-            </button>
-          </div>
-        </div>
-
-        {/* Credentials Inputs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
-          <div>
-            <label style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
-              Project URL:
-            </label>
-            <input
-              type="text"
-              placeholder="https://xyzcompany.supabase.co"
-              value={supabaseUrl}
-              onChange={(e) => setSupabaseUrl(e.target.value)}
-              style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
-            />
-          </div>
-
-          <div>
-            <label style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
-              Anon / Public API Key:
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showSupabaseKey ? 'text' : 'password'}
-                placeholder="eyJhbGciOiJIUzI1NiIsIn..."
-                value={supabaseAnonKey}
-                onChange={(e) => setSupabaseAnonKey(e.target.value)}
-                style={{ paddingRight: 32, fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowSupabaseKey(!showSupabaseKey)}
-                className="btn-ghost"
-                style={{ position: 'absolute', right: 2, top: 2, padding: 4 }}
-              >
-                {showSupabaseKey ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <button
             type="button"
-            onClick={handleSaveSupabase}
-            disabled={isTestingSupabase}
+            onClick={handleSyncCloud}
+            disabled={isSyncing}
             className="btn-primary"
-            style={{ padding: '6px 14px', fontSize: '0.8rem' }}
-          >
-            {isTestingSupabase ? 'Verifica in corso...' : 'Salva e Collega Supabase'}
-          </button>
-
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            Nessun server backend richiesto: comunica direttamente da browser e GitHub Pages via HTTPS.
-          </span>
-        </div>
-
-        <div style={{
-          fontSize: '0.72rem',
-          color: 'var(--text-secondary)',
-          background: 'rgba(0, 0, 0, 0.25)',
-          padding: '8px 10px',
-          borderRadius: 'var(--radius-sm)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 3,
-        }}>
-          <div><strong>Guida rapida Supabase:</strong></div>
-          <div>1. Vai su <a href="https://supabase.com" target="_blank" rel="noreferrer" style={{ color: '#60a5fa', textDecoration: 'underline' }}>supabase.com</a> e crea un progetto gratuito.</div>
-          <div>2. Vai su <strong>Project Settings ➔ API</strong> e copia <strong>Project URL</strong> e <strong>anon public key</strong>.</div>
-          <div>3. Vai su <strong>SQL Editor</strong> in Supabase, incolla lo script copiato con <em>"Copia Script Tabella SQL"</em> e premi <strong>Run</strong>.</div>
-        </div>
-      </div>
-
-      {/* MongoDB Database & Cloud Sync */}
-      <div
-        className="glass-card"
-        style={{
-          padding: '14px 16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-          border: dbHealth?.database === 'connected' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid var(--border-subtle)',
-          background: dbHealth?.database === 'connected'
-            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(18, 21, 30, 0.95) 100%)'
-            : 'var(--bg-card)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              width: 32,
-              height: 32,
-              borderRadius: 'var(--radius-sm)',
-              background: dbHealth?.database === 'connected'
-                ? 'linear-gradient(135deg, #10b981, #059669)'
-                : 'linear-gradient(135deg, #64748b, #475569)',
-              display: 'flex',
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.78rem',
+              display: 'inline-flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <Server size={17} color="#fff" />
-            </div>
-            <div>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: '#fff' }}>
-                Database MongoDB
-              </h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                {isCheckingDb ? (
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Verifica connessione in corso...</span>
-                ) : dbHealth?.database === 'connected' ? (
-                  <span className="chip chip-green" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
-                    <CheckCircle2 size={11} /> Connesso ({dbHealth.databaseUri})
-                  </span>
-                ) : (
-                  <span className="chip" style={{ fontSize: '0.68rem', padding: '2px 8px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                    <AlertCircle size={11} /> Modalità Offline (Cache Locale)
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={handleSyncCloud}
-              disabled={isSyncing}
-              className="btn-primary"
-              style={{
-                padding: '6px 12px',
-                fontSize: '0.78rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                background: dbHealth?.database === 'connected' ? 'linear-gradient(135deg, #10b981, #059669)' : undefined,
-              }}
-            >
-              <RefreshCw size={13} className={isSyncing ? 'animate-spin' : ''} />
-              {isSyncing ? 'Sincronizzazione...' : 'Sincronizza con MongoDB'}
-            </button>
-            <button
-              type="button"
-              onClick={checkDatabaseStatus}
-              disabled={isCheckingDb}
-              className="btn-ghost"
-              style={{ padding: '6px 10px', fontSize: '0.78rem' }}
-              title="Ricontrolla stato"
-            >
-              Verifica
-            </button>
-          </div>
+              gap: 5,
+              background: 'linear-gradient(135deg, #10b981, #059669)',
+            }}
+          >
+            <RefreshCw size={13} className={isSyncing ? 'animate-spin' : ''} />
+            {isSyncing ? 'Sincronizzazione...' : 'Sincronizza Cloud'}
+          </button>
         </div>
+
+        <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: 0 }}>
+          I tuoi dati sono conservati sul tuo dispositivo in modo sicuro e sincronizzati automaticamente con il cloud.
+        </p>
 
         {syncFeedback && (
           <div
@@ -606,63 +343,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <span>{syncFeedback.message}</span>
           </div>
         )}
-
-        {/* Custom Cloud Server URL (for GitHub Pages / Web access) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <label style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', display: 'block' }}>
-            URL Server API Cloud (per collegare MongoDB quando usi l'app da GitHub Pages o telefono):
-          </label>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input
-              type="text"
-              placeholder="Es. https://utrain-api.onrender.com (lascia vuoto per locale)"
-              value={customApiUrl}
-              onChange={(e) => setCustomApiUrl(e.target.value)}
-              style={{ fontSize: '0.8rem', flex: 1, fontFamily: 'var(--font-mono)' }}
-            />
-            <button
-              type="button"
-              onClick={() => {
-                ApiClient.setCustomApiUrl(customApiUrl);
-                checkDatabaseStatus();
-                alert('URL Server API salvato!');
-              }}
-              className="btn-secondary"
-              style={{ padding: '6px 12px', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
-            >
-              Salva URL
-            </button>
-          </div>
-        </div>
-
-        <div style={{
-          fontSize: '0.72rem',
-          color: 'var(--text-secondary)',
-          background: 'rgba(0, 0, 0, 0.25)',
-          padding: '8px 10px',
-          borderRadius: 'var(--radius-sm)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 4,
-        }}>
-          <div><strong>Configurazione MongoDB & Cloud:</strong></div>
-          <div>• <strong>Sul tuo PC (in locale)</strong>: Basta avviare uTrain con <code>npm run dev</code> (o <code>start.bat</code>) e si connetterà direttamente al database configurato in <code>.env</code>.</div>
-          <div>• <strong>Su GitHub Pages (online)</strong>: GitHub Pages ospita solo file statici e non può eseguire un server Node.js. Per collegare MongoDB anche online, puoi pubblicare il backend su un servizio gratuito (es. Render/Railway) e incollare l'URL qui sopra.</div>
-        </div>
-      </div>
-
-      {/* Data Management & Backup */}
-      <div className="glass-card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Database size={17} color="var(--accent-primary)" />
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: '#fff' }}>
-            Dati & Backup
-          </h3>
-        </div>
-
-        <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: 0 }}>
-          I tuoi dati sono conservati sul tuo dispositivo in modo privato.
-        </p>
 
         {importStatus && (
           <div style={{ padding: '8px 10px', background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)', fontSize: '0.78rem', color: 'var(--accent-primary)' }}>
