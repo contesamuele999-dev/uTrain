@@ -165,7 +165,7 @@ export const AICoachDrawer: React.FC<AICoachDrawerProps> = ({
                 AI Coach Personale
               </h3>
               <p style={{ fontSize: '0.68rem', color: '#c4b5fd', margin: 0 }}>
-                Powered by Google Gemini Flash Lite
+                Powered by Google Gemini 3.5 Flash
               </p>
             </div>
           </div>

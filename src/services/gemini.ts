@@ -30,7 +30,7 @@ export class GeminiService {
 
   private static getModel(): string {
     const settings = StorageService.getSettings();
-    return settings.geminiModel || AI_CONFIG.DEFAULT_MODEL || 'gemini-1.5-flash';
+    return settings.geminiModel || AI_CONFIG.DEFAULT_MODEL || 'gemini-3.5-flash';
   }
 
   /**

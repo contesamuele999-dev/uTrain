@@ -132,6 +132,6 @@ export interface UserProfileSettings {
   soundEnabled: boolean;
   vibrationEnabled: boolean;
   geminiApiKey: string;
-  geminiModel: 'gemini-2.0-flash-lite' | 'gemini-2.0-flash' | 'gemini-1.5-flash' | 'gemini-1.5-pro' | string;
+  geminiModel: 'gemini-3.5-flash' | string;
   activeRoutineId?: string;
 }

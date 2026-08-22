@@ -30,7 +30,7 @@ export class StorageService {
       soundEnabled: true,
       vibrationEnabled: true,
       geminiApiKey: '',
-      geminiModel: 'gemini-2.0-flash-lite',
+      geminiModel: 'gemini-3.5-flash',
       activeRoutineId: 'routine-ppl-classic',
     };
   }

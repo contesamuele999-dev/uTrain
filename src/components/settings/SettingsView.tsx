@@ -34,7 +34,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     settings.experienceLevel || 'intermediate'
   );
   const [geminiModel, setGeminiModel] = useState<string>(
-    settings.geminiModel || 'gemini-2.0-flash-lite'
+    settings.geminiModel || AI_CONFIG.DEFAULT_MODEL
   );
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
@@ -247,10 +247,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onChange={(e) => setGeminiModel(e.target.value)}
               style={{ fontSize: '0.84rem' }}
             >
-              <option value="gemini-2.0-flash-lite">Gemini Flash Lite (Consigliato - Veloce)</option>
-              <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
             </select>
           </div>
 
