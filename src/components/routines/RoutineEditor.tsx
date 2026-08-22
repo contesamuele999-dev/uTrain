@@ -7,9 +7,15 @@ import {
   ChevronDown,
   ChevronUp,
   BookOpen,
+  ArrowLeft,
+  Dumbbell,
 } from 'lucide-react';
-import type { Routine, RoutineDay, RoutineExercise, Exercise } from '../../types/workout';
+import type { Routine, RoutineDay, RoutineExercise, Exercise, MuscleGroup, EquipmentType } from '../../types/workout';
 import { StorageService } from '../../services/storage';
+import {
+  MUSCLE_GROUP_LABELS,
+  EQUIPMENT_LABELS,
+} from '../../utils/calculations';
 
 interface RoutineEditorProps {
   initialRoutine?: Routine;
@@ -22,7 +28,7 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
   onSave,
   onCancel,
 }) => {
-  const exercisesLibrary = StorageService.getExercises();
+  const [exercisesLibrary, setExercisesLibrary] = useState<Exercise[]>(() => StorageService.getExercises());
 
   const [title, setTitle] = useState<string>(initialRoutine?.title || 'Nuova Scheda');
   const [description, setDescription] = useState<string>(initialRoutine?.description || '');
@@ -41,6 +47,13 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
 
   const [exerciseModalOpen, setExerciseModalOpen] = useState<{ dayIndex: number } | null>(null);
   const [exerciseSearch, setExerciseSearch] = useState<string>('');
+
+  // Creazione esercizio al volo
+  const [isCreatingExercise, setIsCreatingExercise] = useState<boolean>(false);
+  const [newExName, setNewExName] = useState<string>('');
+  const [newExMuscle, setNewExMuscle] = useState<MuscleGroup>('chest');
+  const [newExEquipment, setNewExEquipment] = useState<EquipmentType>('barbell');
+  const [newExInstructions, setNewExInstructions] = useState<string>('');
 
   const addDay = () => {
     const newDayNum = days.length + 1;
@@ -138,6 +151,38 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
     ex.name.toLowerCase().includes(exerciseSearch.toLowerCase()) ||
     ex.muscleGroup.toLowerCase().includes(exerciseSearch.toLowerCase())
   );
+
+  const startCreatingExercise = (prefillName?: string) => {
+    setNewExName(prefillName ?? exerciseSearch ?? '');
+    setNewExMuscle('chest');
+    setNewExEquipment('barbell');
+    setNewExInstructions('');
+    setIsCreatingExercise(true);
+  };
+
+  const handleCreateAndAddExercise = (dayIndex: number, e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanName = newExName.trim();
+    if (!cleanName) return;
+
+    const created = StorageService.addCustomExercise({
+      name: cleanName,
+      muscleGroup: newExMuscle,
+      equipment: newExEquipment,
+      instructions: newExInstructions.trim() || undefined,
+    });
+
+    // Aggiorna la libreria locale in modo che sia subito disponibile
+    setExercisesLibrary(StorageService.getExercises());
+
+    // Aggiunge l'esercizio al giorno corrente
+    addExerciseToDay(dayIndex, created);
+
+    // Reset e chiusura
+    setNewExName('');
+    setNewExInstructions('');
+    setIsCreatingExercise(false);
+  };
 
   return (
     <div className="glass-card" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
@@ -313,7 +358,7 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
                       </button>
                     </div>
 
-                    {/* Exercise targets inputs - 4 compact items */}
+                    {/* Exercise targets inputs */}
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: 'repeat(4, 1fr)',
@@ -379,6 +424,7 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
               type="button"
               onClick={() => {
                 setExerciseSearch('');
+                setIsCreatingExercise(false);
                 setExerciseModalOpen({ dayIndex: dIdx });
               }}
               className="btn-secondary"
@@ -390,7 +436,7 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
         ))}
       </div>
 
-      {/* Exercise Picker Modal */}
+      {/* Exercise Picker / Creator Modal */}
       {exerciseModalOpen !== null && (
         <div style={{
           position: 'fixed',
@@ -408,12 +454,13 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
             style={{
               width: '100%',
               maxWidth: 480,
-              maxHeight: '80vh',
+              maxHeight: '85vh',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
             }}
           >
+            {/* Modal Header */}
             <div style={{
               padding: '12px 14px',
               borderBottom: '1px solid var(--border-subtle)',
@@ -421,56 +468,206 @@ export const RoutineEditor: React.FC<RoutineEditorProps> = ({
               alignItems: 'center',
               justifyContent: 'space-between',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <BookOpen size={17} color="var(--accent-primary)" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {isCreatingExercise ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingExercise(false)}
+                    className="btn-ghost"
+                    style={{ padding: 4 }}
+                    title="Torna alla ricerca"
+                  >
+                    <ArrowLeft size={16} />
+                  </button>
+                ) : (
+                  <BookOpen size={17} color="var(--accent-primary)" />
+                )}
                 <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: '#fff' }}>
-                  Seleziona Esercizio
+                  {isCreatingExercise ? 'Crea Nuovo Esercizio' : 'Seleziona Esercizio'}
                 </h3>
               </div>
-              <button onClick={() => setExerciseModalOpen(null)} className="btn-ghost" style={{ padding: 4 }}>
-                <X size={16} />
-              </button>
-            </div>
 
-            <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-subtle)' }}>
-              <input
-                type="text"
-                placeholder="Cerca esercizio..."
-                value={exerciseSearch}
-                onChange={(e) => setExerciseSearch(e.target.value)}
-                autoFocus
-                style={{ fontSize: '0.85rem', padding: '6px 10px' }}
-              />
-            </div>
-
-            <div style={{ padding: '8px 12px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {filteredExercises.map((ex) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {!isCreatingExercise && (
+                  <button
+                    type="button"
+                    onClick={() => startCreatingExercise()}
+                    className="btn-primary"
+                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                  >
+                    <Plus size={13} /> Crea Nuovo
+                  </button>
+                )}
                 <button
-                  key={ex.id}
-                  onClick={() => addExerciseToDay(exerciseModalOpen.dayIndex, ex)}
-                  style={{
-                    background: 'var(--bg-input)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '8px 10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    color: '#fff',
+                  type="button"
+                  onClick={() => {
+                    setExerciseModalOpen(null);
+                    setIsCreatingExercise(false);
                   }}
+                  className="btn-ghost"
+                  style={{ padding: 4 }}
                 >
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>{ex.name}</div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                      {ex.muscleGroup.toUpperCase()} • {ex.equipment}
-                    </div>
-                  </div>
-                  <Plus size={14} color="var(--accent-primary)" />
+                  <X size={16} />
                 </button>
-              ))}
+              </div>
             </div>
+
+            {/* Modal Body: Create Form or Picker List */}
+            {isCreatingExercise ? (
+              <form
+                onSubmit={(e) => handleCreateAndAddExercise(exerciseModalOpen.dayIndex, e)}
+                style={{ padding: '14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}
+              >
+                <div>
+                  <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, display: 'block' }}>
+                    Nome Esercizio *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Es. Spinte con manubri su panca 30°"
+                    value={newExName}
+                    onChange={(e) => setNewExName(e.target.value)}
+                    autoFocus
+                    style={{ fontSize: '0.86rem' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, display: 'block' }}>
+                      Gruppo Muscolare *
+                    </label>
+                    <select
+                      value={newExMuscle}
+                      onChange={(e) => setNewExMuscle(e.target.value as MuscleGroup)}
+                      style={{ fontSize: '0.84rem' }}
+                    >
+                      {Object.entries(MUSCLE_GROUP_LABELS).map(([key, label]) => (
+                        <option key={key} value={key}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, display: 'block' }}>
+                      Attrezzatura *
+                    </label>
+                    <select
+                      value={newExEquipment}
+                      onChange={(e) => setNewExEquipment(e.target.value as EquipmentType)}
+                      style={{ fontSize: '0.84rem' }}
+                    >
+                      {Object.entries(EQUIPMENT_LABELS).map(([key, label]) => (
+                        <option key={key} value={key}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 3, display: 'block' }}>
+                    Istruzioni / Note Biomeccaniche (Opzionale)
+                  </label>
+                  <textarea
+                    placeholder="Es. Mantieni i gomiti a 45 gradi, arco lombare fisiologico..."
+                    value={newExInstructions}
+                    onChange={(e) => setNewExInstructions(e.target.value)}
+                    rows={2}
+                    style={{ fontSize: '0.82rem', resize: 'vertical' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingExercise(false)}
+                    className="btn-secondary"
+                    style={{ padding: '7px 12px', fontSize: '0.8rem' }}
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    style={{ padding: '7px 14px', fontSize: '0.8rem' }}
+                  >
+                    <Plus size={14} /> Crea e Aggiungi alla Scheda
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <input
+                    type="text"
+                    placeholder="Cerca esercizio per nome o muscolo..."
+                    value={exerciseSearch}
+                    onChange={(e) => setExerciseSearch(e.target.value)}
+                    autoFocus
+                    style={{ fontSize: '0.85rem', padding: '6px 10px' }}
+                  />
+                </div>
+
+                <div style={{ padding: '8px 12px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {filteredExercises.length === 0 ? (
+                    <div style={{
+                      padding: '24px 16px',
+                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 10,
+                    }}>
+                      <Dumbbell size={28} color="var(--text-muted)" />
+                      <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                        Nessun esercizio trovato per &ldquo;<strong>{exerciseSearch}</strong>&rdquo;.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => startCreatingExercise(exerciseSearch)}
+                        className="btn-primary"
+                        style={{ padding: '7px 14px', fontSize: '0.8rem', marginTop: 4 }}
+                      >
+                        <Plus size={14} /> Crea &ldquo;{exerciseSearch || 'Nuovo Esercizio'}&rdquo;
+                      </button>
+                    </div>
+                  ) : (
+                    filteredExercises.map((ex) => (
+                      <button
+                        key={ex.id}
+                        type="button"
+                        onClick={() => addExerciseToDay(exerciseModalOpen.dayIndex, ex)}
+                        style={{
+                          background: 'var(--bg-input)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '8px 10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          color: '#fff',
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>{ex.name}</div>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                            {MUSCLE_GROUP_LABELS[ex.muscleGroup] || ex.muscleGroup} • {EQUIPMENT_LABELS[ex.equipment] || ex.equipment}
+                          </div>
+                        </div>
+                        <Plus size={14} color="var(--accent-primary)" />
+                      </button>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
