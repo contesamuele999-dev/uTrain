@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { StorageService } from '../../services/storage';
 import { GeminiService } from '../../services/gemini';
+import { AI_CONFIG } from '../../config/aiConfig';
 import type { UserProfileSettings } from '../../types/workout';
 
 interface SettingsViewProps {
