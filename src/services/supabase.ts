@@ -26,17 +26,22 @@ export class SupabaseService {
     let url = '';
     let anonKey = '';
 
+    // 1. Default to global environment variables (set in .env or GitHub Secrets for all users)
+    const envUrl = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_SUPABASE_URL || '';
+    const envAnon = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_SUPABASE_ANON_KEY || '';
+
+    // 2. Allow user override in localStorage if explicitly customized
     if (typeof window !== 'undefined') {
-      url = localStorage.getItem('utrain_supabase_url') || '';
-      anonKey = localStorage.getItem('utrain_supabase_anon_key') || '';
+      const localUrl = localStorage.getItem('utrain_supabase_url');
+      const localKey = localStorage.getItem('utrain_supabase_anon_key');
+      if (localUrl && localKey) {
+        url = localUrl;
+        anonKey = localKey;
+      }
     }
 
-    if (!url) {
-      url = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_SUPABASE_URL || '';
-    }
-    if (!anonKey) {
-      anonKey = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_SUPABASE_ANON_KEY || '';
-    }
+    if (!url) url = envUrl;
+    if (!anonKey) anonKey = envAnon;
 
     return { url: url.trim(), anonKey: anonKey.trim() };
   }
