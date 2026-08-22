@@ -5,6 +5,7 @@ import type {
   RegisterPayload,
   LoginPayload,
 } from '../types/auth';
+import { ApiClient } from './apiClient';
 
 const STORAGE_KEYS = {
   ACCOUNTS: 'utrain_accounts_v1',
@@ -60,7 +61,7 @@ export class AuthService {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   }
 
-  private static getAccounts(): UserAccountRecord[] {
+  static getAccounts(): UserAccountRecord[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ACCOUNTS);
       if (!data) return [];
@@ -213,6 +214,8 @@ export class AuthService {
     };
 
     this.setSession(user);
+    // Background sync with MongoDB
+    ApiClient.syncAccounts(accounts).catch(() => {});
     return { success: true, user };
   }
 

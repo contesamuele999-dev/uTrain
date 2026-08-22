@@ -7,6 +7,7 @@ import type {
 } from '../types/workout';
 import { AuthService } from './authService';
 import { ApiClient } from './apiClient';
+import { SupabaseService } from './supabase';
 import { DEFAULT_EXERCISES } from '../data/defaultExercises';
 import { DEFAULT_ROUTINES } from '../data/defaultRoutines';
 import { DEMO_SESSIONS, DEMO_PRS } from '../data/demoHistory';
@@ -250,22 +251,83 @@ export class StorageService {
     }
   }
 
-  // CLOUD / MONGODB FULL SYNC
+  // CLOUD / SUPABASE / MONGODB FULL SYNC
   static async syncWithCloud(): Promise<{ success: boolean; message: string; databaseStatus?: string; databaseUri?: string }> {
     try {
+      // 1. Check Supabase first (Works 100% directly from GitHub Pages & Browser with NO server)
+      if (SupabaseService.isConfigured()) {
+        const user = AuthService.getCurrentUser();
+        const userId = user ? user.id : 'default_athlete';
+        const localRoutines = this.getRoutines();
+        const localSessions = this.getSessions();
+        const localExercises = this.getExercises();
+        const localPRs = this.getPRs();
+        const localSettings = this.getSettings();
+
+        // Push local data to Supabase
+        const uploadRes = await SupabaseService.uploadData({
+          user_id: userId,
+          email: user?.email,
+          name: user?.name,
+          settings: localSettings,
+          routines: localRoutines,
+          sessions: localSessions,
+          prs: localPRs,
+          exercises: localExercises,
+        });
+
+        if (!uploadRes.success) {
+          return {
+            success: false,
+            message: uploadRes.message,
+            databaseStatus: 'error',
+            databaseUri: 'Supabase Cloud (PostgreSQL)',
+          };
+        }
+
+        // Pull latest state from Supabase
+        const remoteData = await SupabaseService.downloadData(userId);
+        if (remoteData) {
+          if (Array.isArray(remoteData.routines) && remoteData.routines.length > 0) {
+            this.saveRoutines(remoteData.routines);
+          }
+          if (Array.isArray(remoteData.sessions) && remoteData.sessions.length > 0) {
+            this.saveSessions(remoteData.sessions);
+          }
+          if (remoteData.prs && Object.keys(remoteData.prs).length > 0) {
+            this.savePRs(remoteData.prs);
+          }
+          if (remoteData.settings) {
+            this.saveSettings(remoteData.settings);
+          }
+        }
+
+        this.notifySubscribers();
+
+        return {
+          success: true,
+          message: 'Sincronizzazione completata con Supabase Cloud (online da GitHub Pages & cellulare)!',
+          databaseStatus: 'connected',
+          databaseUri: 'Supabase Cloud (PostgreSQL)',
+        };
+      }
+
+      // 2. Secondary fallback: Check Express / MongoDB API
       const health = await ApiClient.checkHealth();
       if (!health || health.database !== 'connected') {
         return {
           success: false,
           message: health
-            ? 'MongoDB non raggiungibile (controlla la stringa di connessione in .env).'
-            : 'Server API non raggiungibile (modalità offline / localStorage attiva).',
+            ? 'Database non raggiungibile (controlla le credenziali in Impostazioni o .env).'
+            : 'Nessun database cloud configurato (attiva Supabase in Impostazioni per sincronizzare online da GitHub Pages).',
           databaseStatus: health ? health.database : 'offline',
           databaseUri: health ? health.databaseUri : undefined,
         };
       }
 
-      // 1. Send all local data to MongoDB
+      // Sync with MongoDB API
+      await ApiClient.syncAccounts(AuthService.getAccounts());
+
       const localRoutines = this.getRoutines();
       const localSessions = this.getSessions();
       const localExercises = this.getExercises();
@@ -280,7 +342,6 @@ export class StorageService {
         settings: localSettings,
       });
 
-      // 2. Fetch remote data from MongoDB and merge
       const remoteData = await ApiClient.syncPull();
       if (remoteData) {
         if (Array.isArray(remoteData.routines) && remoteData.routines.length > 0) {

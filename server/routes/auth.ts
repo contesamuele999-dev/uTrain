@@ -101,13 +101,38 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// List users (for fast switching or profile management)
-router.get('/users', async (_req: Request, res: Response): Promise<void> => {
+// Sync accounts batch from localStorage
+router.post('/sync-accounts', async (req: Request, res: Response): Promise<void> => {
   try {
-    const users = await UserModel.find({}, { id: 1, email: 1, name: 1, experienceLevel: 1, avatar: 1, avatarColor: 1, createdAt: 1 });
-    res.json(users);
-  } catch {
-    res.status(500).json({ error: 'Errore nel recupero degli account' });
+    const { accounts } = req.body;
+    if (!Array.isArray(accounts)) {
+      res.status(400).json({ error: 'Array accounts richiesto' });
+      return;
+    }
+
+    const ops = accounts.map((acc) => {
+      if (!acc.email || !acc.passwordHash) return null;
+      return UserModel.findOneAndUpdate(
+        { email: acc.email.toLowerCase().trim() },
+        {
+          id: acc.id,
+          email: acc.email.toLowerCase().trim(),
+          name: acc.name,
+          passwordHash: acc.passwordHash,
+          salt: acc.passwordSalt,
+          experienceLevel: acc.experienceLevel || 'intermediate',
+          avatar: acc.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(acc.name)}`,
+          avatarColor: acc.avatarColor,
+        },
+        { upsert: true, new: true }
+      );
+    }).filter(Boolean);
+
+    await Promise.all(ops);
+    res.json({ success: true, count: ops.length });
+  } catch (err) {
+    console.error('Error syncing accounts to MongoDB:', err);
+    res.status(500).json({ error: 'Errore nella sincronizzazione degli account' });
   }
 });
 

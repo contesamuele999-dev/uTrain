@@ -32,8 +32,39 @@ export interface SyncPullResponse {
 }
 
 export class ApiClient {
-  private static getBaseUrl(): string {
+  static getBaseUrl(): string {
+    if (typeof window !== 'undefined') {
+      const customUrl = localStorage.getItem('utrain_custom_api_url');
+      if (customUrl && customUrl.trim()) {
+        const clean = customUrl.trim().replace(/\/+$/, '');
+        return clean.endsWith('/api') ? clean : `${clean}/api`;
+      }
+    }
+
+    const envUrl = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_URL;
+    if (envUrl && envUrl.trim()) {
+      const clean = envUrl.trim().replace(/\/+$/, '');
+      return clean.endsWith('/api') ? clean : `${clean}/api`;
+    }
+
     return '/api';
+  }
+
+  static setCustomApiUrl(url: string): void {
+    if (typeof window !== 'undefined') {
+      if (!url || !url.trim()) {
+        localStorage.removeItem('utrain_custom_api_url');
+      } else {
+        localStorage.setItem('utrain_custom_api_url', url.trim());
+      }
+    }
+  }
+
+  static getCustomApiUrl(): string {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('utrain_custom_api_url') || '';
+    }
+    return '';
   }
 
   private static getHeaders(): Record<string, string> {
@@ -141,6 +172,22 @@ export class ApiClient {
         headers: this.getHeaders(),
         body: JSON.stringify(settings),
         signal: AbortSignal.timeout(4000),
+      });
+    } catch {
+      // Offline fallback
+    }
+  }
+
+  /**
+   * Sincronizza gli account utenti locali su MongoDB
+   */
+  static async syncAccounts(accounts: unknown[]): Promise<void> {
+    try {
+      await fetch(`${this.getBaseUrl()}/auth/sync-accounts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accounts }),
+        signal: AbortSignal.timeout(5000),
       });
     } catch {
       // Offline fallback

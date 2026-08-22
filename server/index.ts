@@ -28,7 +28,8 @@ const connectDB = async () => {
   try {
     console.log(`[MongoDB] Connessione in corso a: ${MONGODB_URI.replace(/:([^:@]{3,})@/, ':****@')}...`);
     await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 8000,
+      tlsAllowInvalidCertificates: true,
     });
     isDatabaseConnected = true;
     console.log('✅ [MongoDB] Database uTrain connesso con successo!');
