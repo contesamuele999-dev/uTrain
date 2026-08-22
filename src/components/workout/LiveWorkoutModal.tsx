@@ -6,6 +6,8 @@ import {
   Clock,
   Sparkles,
   Calculator,
+  Timer,
+  Layers,
 } from 'lucide-react';
 import type {
   WorkoutSession,
@@ -139,12 +141,23 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
     });
   };
 
-  // Remove exercise from session
+  // Remove exercise or pause from session
   const handleRemoveExercise = (exerciseIndex: number) => {
-    if (confirm('Rimuovere questo esercizio dalla sessione?')) {
+    if (confirm('Rimuovere questo elemento dalla sessione?')) {
       const updated = [...session.exercises];
       updated.splice(exerciseIndex, 1);
       setSession({ ...session, exercises: updated });
+    }
+  };
+
+  // Toggle pause completed state
+  const handleTogglePauseCompleted = (exerciseIndex: number) => {
+    const updated = [...session.exercises];
+    const item = updated[exerciseIndex];
+    item.completed = !item.completed;
+    setSession({ ...session, exercises: updated });
+    if (item.completed) {
+      Sound.playTapSound();
     }
   };
 
@@ -292,8 +305,191 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
           />
         )}
 
-        {/* Exercise Cards */}
+        {/* Exercise, Group & Pause Cards */}
         {session.exercises.map((exLog, exIdx) => {
+          if (exLog.isGroupHeader) {
+            const typeLabel = exLog.groupType === 'superset' ? 'SUPERSET' : (exLog.groupType === 'circuit' ? 'CIRCUITO' : (exLog.groupType === 'warmup' ? 'WARM-UP' : (exLog.groupType === 'finisher' ? 'FINISHER' : 'GRUPPO')));
+            return (
+              <div
+                key={exLog.id}
+                style={{
+                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.16) 0%, rgba(99, 102, 241, 0.08) 100%)',
+                  border: '1px solid rgba(139, 92, 246, 0.45)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  width: '100%',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{
+                      background: 'rgba(139, 92, 246, 0.3)',
+                      color: '#c4b5fd',
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      padding: '2px 7px',
+                      borderRadius: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}>
+                      <Layers size={13} /> {typeLabel}
+                    </span>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+                      {exLog.exerciseName}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveExercise(exIdx)}
+                    className="btn-ghost"
+                    style={{ padding: 4, color: 'var(--text-muted)' }}
+                    title="Rimuovi intestazione gruppo"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+                {exLog.notes && (
+                  <div style={{ fontSize: '0.76rem', color: '#c4b5fd', background: 'rgba(0, 0, 0, 0.25)', padding: '5px 8px', borderRadius: 'var(--radius-sm)' }}>
+                    {exLog.notes}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          if (exLog.isRestPause) {
+            const pauseSeconds = exLog.restDurationSeconds || 120;
+            const durationText = pauseSeconds >= 60
+              ? `${Math.round(pauseSeconds / 60 * 10) / 10} min (${pauseSeconds}s)`
+              : `${pauseSeconds} secondi`;
+
+            return (
+              <div
+                key={exLog.id}
+                style={{
+                  background: exLog.completed
+                    ? 'rgba(16, 185, 129, 0.08)'
+                    : 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.05) 100%)',
+                  border: exLog.completed
+                    ? '1px solid rgba(16, 185, 129, 0.4)'
+                    : '1px solid rgba(245, 158, 11, 0.45)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
+                  width: '100%',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                    <span style={{
+                      background: exLog.completed ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.25)',
+                      color: exLog.completed ? 'var(--accent-success)' : '#fbbf24',
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      padding: '3px 8px',
+                      borderRadius: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      flexShrink: 0,
+                    }}>
+                      <Timer size={13} /> PAUSA
+                    </span>
+                    <div>
+                      <h3 style={{
+                        fontSize: '0.96rem',
+                        fontWeight: 800,
+                        color: exLog.completed ? 'var(--accent-success)' : '#fff',
+                        margin: 0,
+                        textDecoration: exLog.completed ? 'line-through' : 'none',
+                      }}>
+                        {exLog.exerciseName}
+                      </h3>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        Durata programmata: <strong style={{ color: '#fbbf24' }}>{durationText}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveExercise(exIdx)}
+                      className="btn-ghost"
+                      style={{ padding: 4, color: 'var(--text-muted)' }}
+                      title="Rimuovi pausa"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                </div>
+
+                {exLog.notes && (
+                  <div style={{
+                    fontSize: '0.76rem',
+                    color: 'var(--text-secondary)',
+                    background: 'rgba(0, 0, 0, 0.25)',
+                    padding: '6px 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    borderLeft: '3px solid #fbbf24',
+                  }}>
+                    {exLog.notes}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTimerDuration(pauseSeconds);
+                      setIsTimerActive(true);
+                      Sound.playTapSound();
+                    }}
+                    className="btn-secondary"
+                    style={{
+                      padding: '7px 14px',
+                      fontSize: '0.82rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: 'rgba(245, 158, 11, 0.15)',
+                      border: '1px solid rgba(245, 158, 11, 0.4)',
+                      color: '#fbbf24',
+                    }}
+                  >
+                    <Timer size={15} /> Avvia Timer Pausa ({pauseSeconds}s)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTogglePauseCompleted(exIdx)}
+                    style={{
+                      background: exLog.completed ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-input)',
+                      border: exLog.completed ? '1px solid var(--accent-success)' : '1px solid var(--border-subtle)',
+                      color: exLog.completed ? 'var(--accent-success)' : 'var(--text-primary)',
+                      padding: '7px 14px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontWeight: 600,
+                    }}
+                  >
+                    <CheckCircle size={15} /> {exLog.completed ? 'Pausa Completata ✓' : 'Segna come Eseguita'}
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
           const advice = getOverloadAdvice(exLog.exerciseId);
 
           return (
@@ -311,7 +507,7 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
               {/* Exercise Header */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <span style={{
                       fontSize: '0.75rem',
                       fontWeight: 800,
@@ -323,6 +519,18 @@ export const LiveWorkoutModal: React.FC<LiveWorkoutModalProps> = ({
                     <h3 style={{ fontSize: '0.96rem', fontWeight: 800, color: '#fff', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {exLog.exerciseName}
                     </h3>
+                    {exLog.groupName && (
+                      <span style={{
+                        fontSize: '0.66rem',
+                        color: '#c4b5fd',
+                        background: 'rgba(139, 92, 246, 0.2)',
+                        padding: '1px 6px',
+                        borderRadius: 4,
+                        fontWeight: 700,
+                      }}>
+                        {exLog.groupName}
+                      </span>
+                    )}
                   </div>
                   <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
                     {exLog.muscleGroup.toUpperCase()}

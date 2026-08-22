@@ -18,12 +18,14 @@ export const SetRow: React.FC<SetRowProps> = ({
   onToggleComplete,
 }) => {
   const handleWeightChange = (delta: number) => {
-    const nextWeight = Math.max(0, Math.round((set.weight + delta) * 100) / 100);
+    const currentWeight = Number(set.weight) || 0;
+    const nextWeight = Math.max(0, Math.round((currentWeight + delta) * 100) / 100);
     onUpdate({ ...set, weight: nextWeight });
   };
 
   const handleRepsChange = (delta: number) => {
-    const nextReps = Math.max(0, set.reps + delta);
+    const currentReps = Number(set.reps) || 0;
+    const nextReps = Math.max(0, currentReps + delta);
     onUpdate({ ...set, reps: nextReps });
   };
 
@@ -99,9 +101,20 @@ export const SetRow: React.FC<SetRowProps> = ({
             type="number"
             step="0.5"
             min="0"
-            value={set.weight || ''}
+            value={set.weight !== undefined && set.weight !== null ? set.weight : ''}
             placeholder="0"
-            onChange={(e) => onUpdate({ ...set, weight: parseFloat(e.target.value) || 0 })}
+            onChange={(e) => {
+              const val = e.target.value;
+              onUpdate({
+                ...set,
+                weight: val === '' ? ('' as unknown as number) : (parseFloat(val) || 0),
+              });
+            }}
+            onBlur={() => {
+              if (typeof set.weight === 'string' || Number.isNaN(set.weight)) {
+                onUpdate({ ...set, weight: parseFloat(String(set.weight)) || 0 });
+              }
+            }}
             style={{
               padding: '2px 4px',
               textAlign: 'center',
@@ -140,9 +153,20 @@ export const SetRow: React.FC<SetRowProps> = ({
           <input
             type="number"
             min="0"
-            value={set.reps || ''}
+            value={set.reps !== undefined && set.reps !== null ? set.reps : ''}
             placeholder="0"
-            onChange={(e) => onUpdate({ ...set, reps: parseInt(e.target.value) || 0 })}
+            onChange={(e) => {
+              const val = e.target.value;
+              onUpdate({
+                ...set,
+                reps: val === '' ? ('' as unknown as number) : (parseInt(val, 10) || 0),
+              });
+            }}
+            onBlur={() => {
+              if (typeof set.reps === 'string' || Number.isNaN(set.reps)) {
+                onUpdate({ ...set, reps: parseInt(String(set.reps), 10) || 0 });
+              }
+            }}
             style={{
               padding: '2px 4px',
               textAlign: 'center',

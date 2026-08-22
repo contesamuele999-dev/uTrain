@@ -95,6 +95,33 @@ export const App: React.FC = () => {
       totalSets: 0,
       totalReps: 0,
       exercises: day.exercises.map((ex) => {
+        if (ex.isGroupHeader) {
+          return {
+            id: `log-group-${Date.now()}-${ex.id}`,
+            exerciseId: ex.exerciseId,
+            exerciseName: ex.name,
+            muscleGroup: 'other' as const,
+            isGroupHeader: true,
+            groupType: ex.groupType,
+            notes: ex.notes,
+            sets: [],
+          };
+        }
+
+        if (ex.isRestPause) {
+          return {
+            id: `log-pause-${Date.now()}-${ex.id}`,
+            exerciseId: ex.exerciseId,
+            exerciseName: ex.name,
+            muscleGroup: 'other' as const,
+            isRestPause: true,
+            restDurationSeconds: ex.restDurationSeconds || 120,
+            notes: ex.notes,
+            sets: [],
+            completed: false,
+          };
+        }
+
         const lastSessionWithEx = sessions.find((s) =>
           s.exercises.some((e) => e.exerciseId === ex.exerciseId)
         );
@@ -119,6 +146,8 @@ export const App: React.FC = () => {
           exerciseName: ex.name,
           muscleGroup: ex.muscleGroup,
           sets,
+          notes: ex.notes,
+          groupName: ex.groupName,
         };
       }),
     };

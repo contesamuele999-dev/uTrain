@@ -50,6 +50,11 @@ export interface RoutineExercise {
   targetRestSeconds?: number;
   notes?: string;
   suggestedWeight?: number;
+  isRestPause?: boolean;
+  restDurationSeconds?: number;
+  isGroupHeader?: boolean;
+  groupType?: 'standard' | 'superset' | 'circuit' | 'warmup' | 'finisher';
+  groupName?: string;
 }
 
 export interface RoutineDay {
@@ -89,6 +94,12 @@ export interface CompletedExerciseLog {
   muscleGroup: MuscleGroup;
   sets: CompletedSet[];
   notes?: string;
+  isRestPause?: boolean;
+  restDurationSeconds?: number;
+  completed?: boolean;
+  isGroupHeader?: boolean;
+  groupType?: 'standard' | 'superset' | 'circuit' | 'warmup' | 'finisher';
+  groupName?: string;
 }
 
 export interface WorkoutSession {

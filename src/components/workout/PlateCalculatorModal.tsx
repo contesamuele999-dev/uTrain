@@ -78,8 +78,17 @@ export const PlateCalculatorModal: React.FC<PlateCalculatorModalProps> = ({
               type="number"
               step="2.5"
               min="0"
-              value={targetWeight}
-              onChange={(e) => setTargetWeight(parseFloat(e.target.value) || 0)}
+              value={targetWeight === 0 ? '' : (targetWeight ?? '')}
+              placeholder="0"
+              onChange={(e) => {
+                const val = e.target.value;
+                setTargetWeight(val === '' ? ('' as unknown as number) : (parseFloat(val) || 0));
+              }}
+              onBlur={() => {
+                if (typeof targetWeight === 'string' || Number.isNaN(targetWeight)) {
+                  setTargetWeight(parseFloat(String(targetWeight)) || 0);
+                }
+              }}
               style={{ fontSize: '1.1rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
             />
           </div>

@@ -8,6 +8,8 @@ import {
   Trash2,
   CheckCircle,
   Copy,
+  Timer,
+  Layers,
 } from 'lucide-react';
 import type { Routine, RoutineDay } from '../../types/workout';
 import { StorageService } from '../../services/storage';
@@ -200,26 +202,93 @@ export const RoutineList: React.FC<RoutineListProps> = ({
                               {day.name}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                              {day.exercises.map((ex, eIdx) => (
-                                <div
-                                  key={ex.id}
-                                  style={{
-                                    fontSize: '0.76rem',
-                                    color: 'var(--text-primary)',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    gap: 6,
-                                  }}
-                                >
-                                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {eIdx + 1}. {ex.name}
-                                  </span>
-                                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '0.7rem', flexShrink: 0 }}>
-                                    {ex.targetSets}×{ex.targetRepsMin}-{ex.targetRepsMax}
-                                  </span>
-                                </div>
-                              ))}
+                              {day.exercises.map((ex, eIdx) => {
+                                if (ex.isGroupHeader) {
+                                  const typeLabel = ex.groupType === 'superset' ? 'SUPERSET' : (ex.groupType === 'circuit' ? 'CIRCUITO' : (ex.groupType === 'warmup' ? 'WARM-UP' : (ex.groupType === 'finisher' ? 'FINISHER' : 'GRUPPO')));
+                                  return (
+                                    <div
+                                      key={ex.id}
+                                      style={{
+                                        fontSize: '0.74rem',
+                                        color: '#c4b5fd',
+                                        background: 'rgba(139, 92, 246, 0.12)',
+                                        border: '1px solid rgba(139, 92, 246, 0.35)',
+                                        borderRadius: 4,
+                                        padding: '3px 8px',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        margin: '4px 0 2px 0',
+                                      }}
+                                    >
+                                      <span style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <Layers size={11} /> {ex.name}
+                                      </span>
+                                      <span style={{ fontSize: '0.62rem', background: 'rgba(139, 92, 246, 0.25)', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>
+                                        {typeLabel}
+                                      </span>
+                                    </div>
+                                  );
+                                }
+
+                                if (ex.isRestPause) {
+                                  const durationLabel = ex.restDurationSeconds
+                                    ? (ex.restDurationSeconds >= 60 ? `${Math.round(ex.restDurationSeconds / 60 * 10) / 10} min` : `${ex.restDurationSeconds}s`)
+                                    : '2 min';
+                                  return (
+                                    <div
+                                      key={ex.id}
+                                      style={{
+                                        fontSize: '0.72rem',
+                                        color: '#fbbf24',
+                                        background: 'rgba(245, 158, 11, 0.1)',
+                                        border: '1px dashed rgba(245, 158, 11, 0.3)',
+                                        borderRadius: 4,
+                                        padding: '2px 6px',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        margin: '2px 0',
+                                      }}
+                                    >
+                                      <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <Timer size={11} /> {ex.name} {ex.notes ? `(${ex.notes})` : ''}
+                                      </span>
+                                      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+                                        {durationLabel}
+                                      </span>
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  <div
+                                    key={ex.id}
+                                    style={{
+                                      fontSize: '0.76rem',
+                                      color: 'var(--text-primary)',
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'center',
+                                      gap: 6,
+                                    }}
+                                  >
+                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      {eIdx + 1}. {ex.name}
+                                      {ex.groupName && (
+                                        <span style={{ fontSize: '0.62rem', color: '#c4b5fd', background: 'rgba(139, 92, 246, 0.15)', padding: '0 4px', borderRadius: 3 }}>
+                                          {ex.groupName}
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: '0.7rem', flexShrink: 0 }}>
+                                      {ex.targetSets}×{ex.targetRepsMin}-{ex.targetRepsMax}
+                                    </span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
 

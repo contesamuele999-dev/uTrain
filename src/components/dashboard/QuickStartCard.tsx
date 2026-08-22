@@ -146,8 +146,14 @@ export const QuickStartCard: React.FC<QuickStartCardProps> = ({
           {selectedDay.name}
         </div>
         <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-          {selectedDay.exercises.length} Esercizi: {selectedDay.exercises.map((e) => e.name).slice(0, 3).join(', ')}
-          {selectedDay.exercises.length > 3 ? ` + altri ${selectedDay.exercises.length - 3}` : ''}
+          {selectedDay.exercises.filter((e) => !e.isRestPause).length} Esercizi
+          {selectedDay.exercises.some((e) => e.isRestPause)
+            ? ` (+${selectedDay.exercises.filter((e) => e.isRestPause).length} ${selectedDay.exercises.filter((e) => e.isRestPause).length === 1 ? 'pausa' : 'pause'})`
+            : ''}
+          : {selectedDay.exercises.filter((e) => !e.isRestPause).map((e) => e.name).slice(0, 3).join(', ')}
+          {selectedDay.exercises.filter((e) => !e.isRestPause).length > 3
+            ? ` + altri ${selectedDay.exercises.filter((e) => !e.isRestPause).length - 3}`
+            : ''}
         </div>
       </div>
 
