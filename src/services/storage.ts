@@ -37,6 +37,59 @@ export class StorageService {
     };
   }
 
+  // SYNC STATE
+  private static autoSyncTimeout: ReturnType<typeof setTimeout> | null = null;
+  private static isSyncingInProgress = false;
+  private static syncStatus: 'idle' | 'syncing' | 'synced' | 'error' = 'idle';
+  private static syncSubscribers: Array<(status: 'idle' | 'syncing' | 'synced' | 'error') => void> = [];
+
+  static getSyncStatus(): 'idle' | 'syncing' | 'synced' | 'error' {
+    return this.syncStatus;
+  }
+
+  static subscribeSyncStatus(callback: (status: 'idle' | 'syncing' | 'synced' | 'error') => void): () => void {
+    this.syncSubscribers.push(callback);
+    callback(this.syncStatus);
+    return () => {
+      this.syncSubscribers = this.syncSubscribers.filter((cb) => cb !== callback);
+    };
+  }
+
+  private static setSyncStatus(status: 'idle' | 'syncing' | 'synced' | 'error'): void {
+    this.syncStatus = status;
+    this.syncSubscribers.forEach((cb) => {
+      try {
+        cb(status);
+      } catch (err) {
+        console.error('Error notifying sync subscriber:', err);
+      }
+    });
+  }
+
+  /**
+   * Schedula una sincronizzazione automatica in background (debounced 1.5s)
+   */
+  static triggerAutoSync(): void {
+    if (this.autoSyncTimeout) {
+      clearTimeout(this.autoSyncTimeout);
+    }
+    this.autoSyncTimeout = setTimeout(() => {
+      this.silentSync().catch(() => {});
+    }, 1500);
+  }
+
+  /**
+   * Esegue la sincronizzazione silenziosa in background
+   */
+  static async silentSync(): Promise<void> {
+    if (this.isSyncingInProgress) return;
+    try {
+      await this.syncWithCloud(true);
+    } catch {
+      // Sincronizzazione silenziosa: non blocca la UI
+    }
+  }
+
   // SETTINGS
   static getSettings(): UserProfileSettings {
     try {
@@ -54,6 +107,7 @@ export class StorageService {
     const updated = { ...current, ...settings };
     localStorage.setItem(this.getKey('settings'), JSON.stringify(updated));
     this.notifySubscribers();
+    this.triggerAutoSync();
     // Async background sync with MongoDB
     ApiClient.saveSettings(updated).catch(() => {});
     return updated;
@@ -73,9 +127,10 @@ export class StorageService {
     }
   }
 
-  static saveExercises(exercises: Exercise[]): void {
+  static saveExercises(exercises: Exercise[], triggerSync = true): void {
     localStorage.setItem(this.getKey('exercises'), JSON.stringify(exercises));
     this.notifySubscribers();
+    if (triggerSync) this.triggerAutoSync();
   }
 
   static addCustomExercise(exercise: Omit<Exercise, 'id' | 'isCustom'>): Exercise {
@@ -95,7 +150,7 @@ export class StorageService {
     try {
       const data = localStorage.getItem(this.getKey('routines'));
       if (!data) {
-        this.saveRoutines(DEFAULT_ROUTINES);
+        this.saveRoutines(DEFAULT_ROUTINES, false);
         return DEFAULT_ROUTINES;
       }
       return JSON.parse(data);
@@ -104,9 +159,10 @@ export class StorageService {
     }
   }
 
-  static saveRoutines(routines: Routine[]): void {
+  static saveRoutines(routines: Routine[], triggerSync = true): void {
     localStorage.setItem(this.getKey('routines'), JSON.stringify(routines));
     this.notifySubscribers();
+    if (triggerSync) this.triggerAutoSync();
   }
 
   static getRoutineById(id: string): Routine | undefined {
@@ -148,9 +204,10 @@ export class StorageService {
     }
   }
 
-  static saveSessions(sessions: WorkoutSession[]): void {
+  static saveSessions(sessions: WorkoutSession[], triggerSync = true): void {
     localStorage.setItem(this.getKey('sessions'), JSON.stringify(sessions));
     this.notifySubscribers();
+    if (triggerSync) this.triggerAutoSync();
   }
 
   static addCompletedSession(session: WorkoutSession): void {
@@ -197,9 +254,10 @@ export class StorageService {
     }
   }
 
-  static savePRs(prs: Record<string, PersonalRecord>): void {
+  static savePRs(prs: Record<string, PersonalRecord>, triggerSync = true): void {
     localStorage.setItem(this.getKey('prs'), JSON.stringify(prs));
     this.notifySubscribers();
+    if (triggerSync) this.triggerAutoSync();
   }
 
   // DEMO DATA LOADER
@@ -211,6 +269,7 @@ export class StorageService {
     });
     this.savePRs(prMap);
     this.notifySubscribers();
+    this.triggerAutoSync();
   }
 
   // EXPORT / IMPORT BACKUP
@@ -244,6 +303,7 @@ export class StorageService {
       if (data.prs) this.savePRs(data.prs);
 
       this.notifySubscribers();
+      this.triggerAutoSync();
       return { success: true, message: 'Backup ripristinato con successo!' };
     } catch (e: unknown) {
       const err = e as Error;
@@ -251,20 +311,102 @@ export class StorageService {
     }
   }
 
-  // CLOUD / SUPABASE / MONGODB FULL SYNC
-  static async syncWithCloud(): Promise<{ success: boolean; message: string; databaseStatus?: string; databaseUri?: string }> {
+  // CLOUD / SUPABASE / MONGODB FULL SYNC (CON INTELLIGENT MERGE BIDIREZIONALE)
+  static async syncWithCloud(silent = false): Promise<{ success: boolean; message: string; databaseStatus?: string; databaseUri?: string }> {
+    if (this.isSyncingInProgress) {
+      return { success: true, message: 'Sincronizzazione già in corso...' };
+    }
+
+    this.isSyncingInProgress = true;
+    this.setSyncStatus('syncing');
+
     try {
-      // 1. Check Supabase first (Works 100% directly from GitHub Pages & Browser with NO server)
+      // 1. SUPABASE CLOUD (Funziona ovunque su Web, GitHub Pages, Mobile & PC)
       if (SupabaseService.isConfigured()) {
         const user = AuthService.getCurrentUser();
         const userId = user ? user.id : 'default_athlete';
-        const localRoutines = this.getRoutines();
-        const localSessions = this.getSessions();
-        const localExercises = this.getExercises();
-        const localPRs = this.getPRs();
-        const localSettings = this.getSettings();
 
-        // Push local data to Supabase
+        // Sincronizza anche tutti gli account registrati verso il cloud
+        const localAccounts = AuthService.getAccounts();
+        if (localAccounts.length > 0) {
+          SupabaseService.syncAllAccounts(localAccounts).catch(() => {});
+        }
+
+        // STEP 1: Scarica PRIMA lo stato remoto dal Cloud
+        const remoteData = await SupabaseService.downloadData(userId);
+
+        // STEP 2: Effettua il MERGE intelligente tra Locale e Remoto
+        let localRoutines = this.getRoutines();
+        let localSessions = this.getSessions();
+        let localExercises = this.getExercises();
+        let localPRs = this.getPRs();
+        let localSettings = this.getSettings();
+
+        if (remoteData) {
+          // A. Merge Sessioni (Unione per ID, ordinate per data più recente)
+          const sessionMap = new Map<string, WorkoutSession>();
+          if (Array.isArray(remoteData.sessions)) {
+            remoteData.sessions.forEach((s) => sessionMap.set(s.id, s));
+          }
+          localSessions.forEach((s) => sessionMap.set(s.id, s));
+          localSessions = Array.from(sessionMap.values()).sort(
+            (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+          );
+
+          // B. Merge Schede / Routine (Unione per ID, tenendo la versione più aggiornata)
+          const routineMap = new Map<string, Routine>();
+          if (Array.isArray(remoteData.routines)) {
+            remoteData.routines.forEach((r) => routineMap.set(r.id, r));
+          }
+          localRoutines.forEach((r) => {
+            const remoteR = routineMap.get(r.id);
+            if (!remoteR) {
+              routineMap.set(r.id, r);
+            } else {
+              const localTime = r.updatedAt ? new Date(r.updatedAt).getTime() : 0;
+              const remoteTime = remoteR.updatedAt ? new Date(remoteR.updatedAt).getTime() : 0;
+              if (localTime >= remoteTime) {
+                routineMap.set(r.id, r);
+              }
+            }
+          });
+          localRoutines = Array.from(routineMap.values());
+
+          // C. Merge Personal Records (PRs - Tiene sempre il massimale migliore)
+          const mergedPRs = { ...(remoteData.prs || {}) };
+          Object.entries(localPRs).forEach(([exId, localRecord]) => {
+            const remoteRecord = mergedPRs[exId];
+            if (!remoteRecord) {
+              mergedPRs[exId] = localRecord;
+            } else {
+              const localMax = localRecord.maxEstimated1RM || localRecord.maxWeight || 0;
+              const remoteMax = remoteRecord.maxEstimated1RM || remoteRecord.maxWeight || 0;
+              mergedPRs[exId] = localMax >= remoteMax ? localRecord : remoteRecord;
+            }
+          });
+          localPRs = mergedPRs;
+
+          // D. Merge Esercizi personalizzati
+          const exerciseMap = new Map<string, Exercise>();
+          if (Array.isArray(remoteData.exercises)) {
+            remoteData.exercises.forEach((ex) => exerciseMap.set(ex.id, ex));
+          }
+          localExercises.forEach((ex) => exerciseMap.set(ex.id, ex));
+          localExercises = Array.from(exerciseMap.values());
+
+          // E. Merge Impostazioni
+          if (remoteData.settings && typeof remoteData.settings === 'object') {
+            localSettings = { ...remoteData.settings, ...localSettings };
+          }
+
+          // Salva lo stato unito in locale
+          this.saveRoutines(localRoutines, false);
+          this.saveSessions(localSessions, false);
+          this.savePRs(localPRs, false);
+          this.saveExercises(localExercises, false);
+        }
+
+        // STEP 3: Invia lo stato UNITO completo al Cloud Supabase
         const uploadRes = await SupabaseService.uploadData({
           user_id: userId,
           email: user?.email,
@@ -277,6 +419,7 @@ export class StorageService {
         });
 
         if (!uploadRes.success) {
+          this.setSyncStatus('error');
           return {
             success: false,
             message: uploadRes.message,
@@ -285,24 +428,8 @@ export class StorageService {
           };
         }
 
-        // Pull latest state from Supabase
-        const remoteData = await SupabaseService.downloadData(userId);
-        if (remoteData) {
-          if (Array.isArray(remoteData.routines) && remoteData.routines.length > 0) {
-            this.saveRoutines(remoteData.routines);
-          }
-          if (Array.isArray(remoteData.sessions) && remoteData.sessions.length > 0) {
-            this.saveSessions(remoteData.sessions);
-          }
-          if (remoteData.prs && Object.keys(remoteData.prs).length > 0) {
-            this.savePRs(remoteData.prs);
-          }
-          if (remoteData.settings) {
-            this.saveSettings(remoteData.settings);
-          }
-        }
-
         this.notifySubscribers();
+        this.setSyncStatus('synced');
 
         return {
           success: true,
@@ -315,6 +442,7 @@ export class StorageService {
       // 2. Secondary fallback: Check Express / MongoDB API
       const health = await ApiClient.checkHealth();
       if (!health || health.database !== 'connected') {
+        this.setSyncStatus('idle');
         return {
           success: false,
           message: health
@@ -345,17 +473,17 @@ export class StorageService {
       const remoteData = await ApiClient.syncPull();
       if (remoteData) {
         if (Array.isArray(remoteData.routines) && remoteData.routines.length > 0) {
-          this.saveRoutines(remoteData.routines);
+          this.saveRoutines(remoteData.routines, false);
         }
         if (Array.isArray(remoteData.workouts) && remoteData.workouts.length > 0) {
-          this.saveSessions(remoteData.workouts);
+          this.saveSessions(remoteData.workouts, false);
         }
         if (Array.isArray(remoteData.prs) && remoteData.prs.length > 0) {
           const prMap: Record<string, PersonalRecord> = {};
           remoteData.prs.forEach((p) => {
             prMap[p.exerciseId] = p;
           });
-          this.savePRs(prMap);
+          this.savePRs(prMap, false);
         }
         if (remoteData.settings) {
           this.saveSettings(remoteData.settings);
@@ -363,6 +491,7 @@ export class StorageService {
       }
 
       this.notifySubscribers();
+      this.setSyncStatus('synced');
 
       return {
         success: true,
@@ -372,10 +501,16 @@ export class StorageService {
       };
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
+      this.setSyncStatus('error');
+      if (!silent) {
+        console.error('Errore sincronizzazione cloud:', errorMsg);
+      }
       return {
         success: false,
         message: `Errore durante la sincronizzazione: ${errorMsg}`,
       };
+    } finally {
+      this.isSyncingInProgress = false;
     }
   }
 

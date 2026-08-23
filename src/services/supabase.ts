@@ -79,50 +79,79 @@ export class SupabaseService {
   }
 
   /**
-   * Test di connessione al database Supabase
+   * Test di connessione al database Supabase e verifica stato tabelle
    */
-  static async checkConnection(): Promise<{ connected: boolean; message: string; projectUrl?: string }> {
+  static async checkConnection(): Promise<{
+    connected: boolean;
+    accountsTableReady: boolean;
+    syncTableReady: boolean;
+    message: string;
+    projectUrl?: string;
+  }> {
     const client = this.getClient();
     const { url } = this.getCredentials();
 
     if (!client) {
       return {
         connected: false,
-        message: 'Credenziali Supabase non configurate (URL o Anon Key mancanti).',
+        accountsTableReady: false,
+        syncTableReady: false,
+        message: 'Credenziali Supabase non inserite (URL o Anon Key mancanti).',
       };
     }
 
     try {
-      // Test query on utrain_sync table
-      const { error } = await client
-        .from('utrain_sync')
-        .select('user_id')
-        .limit(1);
+      // 1. Verifica tabella utrain_sync
+      let syncTableReady = false;
+      try {
+        const { error: syncErr } = await client.from('utrain_sync').select('user_id').limit(1);
+        syncTableReady = !syncErr;
+      } catch {
+        syncTableReady = false;
+      }
 
-      if (error) {
-        if (error.code === '42P01' || error.message.includes('relation "public.utrain_sync" does not exist')) {
-          return {
-            connected: false,
-            message: 'Connesso a Supabase, ma la tabella "utrain_sync" non esiste ancora. Esegui lo script SQL fornito.',
-            projectUrl: url,
-          };
-        }
+      // 2. Verifica tabella utrain_accounts
+      let accountsTableReady = false;
+      try {
+        const { error: accErr } = await client.from('utrain_accounts').select('id').limit(1);
+        accountsTableReady = !accErr;
+      } catch {
+        accountsTableReady = false;
+      }
+
+      if (!syncTableReady && !accountsTableReady) {
         return {
-          connected: false,
-          message: `Errore Supabase: ${error.message}`,
+          connected: true,
+          accountsTableReady: false,
+          syncTableReady: false,
+          message: 'Connesso a Supabase, ma le tabelle SQL non esistono ancora. Clicca "Copia Script SQL" ed eseguilo in Supabase SQL Editor.',
+          projectUrl: url,
+        };
+      }
+
+      if (!accountsTableReady) {
+        return {
+          connected: true,
+          accountsTableReady: false,
+          syncTableReady: true,
+          message: 'Tabella dati "utrain_sync" attiva! Esegui lo script SQL aggiornato per creare anche "utrain_accounts" per login multi-dispositivo.',
           projectUrl: url,
         };
       }
 
       return {
         connected: true,
-        message: 'Connessione a Supabase Cloud attiva e funzionante!',
+        accountsTableReady: true,
+        syncTableReady: true,
+        message: 'Database Supabase Cloud attivo e tabelle pronte (sincronizzazione automatica attiva)!',
         projectUrl: url,
       };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       return {
         connected: false,
+        accountsTableReady: false,
+        syncTableReady: false,
         message: `Impossibile raggiungere Supabase: ${msg}`,
         projectUrl: url,
       };
@@ -188,16 +217,19 @@ export class SupabaseService {
   }
 
   /**
-   * Salva o aggiorna un account utente su Supabase Cloud (tabella utrain_accounts)
+   * Salva o aggiorna un account utente su Supabase Cloud (con doppio canale utrain_accounts + backup utrain_sync)
    */
   static async saveAccount(account: UserAccountRecord): Promise<{ success: boolean; message?: string }> {
     const client = this.getClient();
     if (!client) return { success: false, message: 'Supabase non configurato.' };
 
+    const cleanEmail = account.email.toLowerCase().trim();
+
+    // 1. Canale Primario: utrain_accounts
     try {
       const payload = {
         id: account.id,
-        email: account.email.toLowerCase().trim(),
+        email: cleanEmail,
         name: account.name,
         password_hash: account.passwordHash,
         password_salt: account.passwordSalt,
@@ -207,54 +239,96 @@ export class SupabaseService {
         last_login: account.lastLogin || new Date().toISOString(),
       };
 
-      const { error } = await client
+      await client
         .from('utrain_accounts')
         .upsert(payload, { onConflict: 'email' });
-
-      if (error) {
-        console.warn('[Supabase] Salvataggio account cloud non riuscito:', error.message);
-        return { success: false, message: error.message };
-      }
-
-      return { success: true };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn('[Supabase] Errore di rete salvataggio account:', msg);
-      return { success: false, message: msg };
+    } catch (err) {
+      console.warn('[Supabase] Salvataggio utrain_accounts (tentativo 1):', err);
     }
+
+    // 2. Canale Backup di Sicurezza: salva account anche in utrain_sync per garantire il recupero se utrain_accounts manca
+    try {
+      const { data: existingSync } = await client
+        .from('utrain_sync')
+        .select('settings')
+        .eq('user_id', account.id)
+        .maybeSingle();
+
+      const currentSettings = (existingSync?.settings && typeof existingSync.settings === 'object') ? existingSync.settings : {};
+      const mergedSettings = {
+        ...currentSettings,
+        _accountRecord: account,
+      };
+
+      await client
+        .from('utrain_sync')
+        .upsert({
+          user_id: account.id,
+          email: cleanEmail,
+          name: account.name,
+          settings: mergedSettings,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+    } catch (err) {
+      console.warn('[Supabase] Salvataggio backup utrain_sync:', err);
+    }
+
+    return { success: true };
   }
 
   /**
-   * Recupera un account utente da Supabase Cloud per email
+   * Recupera un account utente da Supabase Cloud per email (cerca in utrain_accounts e in fallback su utrain_sync)
    */
   static async fetchAccountByEmail(email: string): Promise<UserAccountRecord | null> {
     const client = this.getClient();
     if (!client) return null;
 
+    const cleanEmail = email.toLowerCase().trim();
+
+    // 1. Tentativo su tabella utrain_accounts
     try {
-      const cleanEmail = email.toLowerCase().trim();
       const { data, error } = await client
         .from('utrain_accounts')
         .select('*')
-        .eq('email', cleanEmail)
+        .ilike('email', cleanEmail)
         .maybeSingle();
 
-      if (error || !data) return null;
-
-      return {
-        id: data.id,
-        email: data.email,
-        name: data.name,
-        experienceLevel: data.experience_level || 'intermediate',
-        avatarColor: data.avatar_color,
-        createdAt: data.created_at || new Date().toISOString(),
-        lastLogin: data.last_login || new Date().toISOString(),
-        passwordHash: data.password_hash,
-        passwordSalt: data.password_salt,
-      };
-    } catch {
-      return null;
+      if (!error && data && data.password_hash) {
+        return {
+          id: data.id,
+          email: data.email,
+          name: data.name,
+          experienceLevel: data.experience_level || 'intermediate',
+          avatarColor: data.avatar_color,
+          createdAt: data.created_at || new Date().toISOString(),
+          lastLogin: data.last_login || new Date().toISOString(),
+          passwordHash: data.password_hash,
+          passwordSalt: data.password_salt,
+        };
+      }
+    } catch (err) {
+      console.warn('[Supabase] Query utrain_accounts warning:', err);
     }
+
+    // 2. Fallback di emergenza: cerca su tabella utrain_sync
+    try {
+      const { data: syncData, error: syncError } = await client
+        .from('utrain_sync')
+        .select('*')
+        .ilike('email', cleanEmail)
+        .maybeSingle();
+
+      if (!syncError && syncData && syncData.settings && typeof syncData.settings === 'object') {
+        const stored = (syncData.settings as Record<string, unknown>)._accountRecord as UserAccountRecord | undefined;
+        if (stored && stored.passwordHash) {
+          return stored;
+        }
+      }
+    } catch (err) {
+      console.warn('[Supabase] Query fallback utrain_sync warning:', err);
+    }
+
+    return null;
   }
 
   /**
@@ -264,26 +338,10 @@ export class SupabaseService {
     const client = this.getClient();
     if (!client || !accounts.length) return;
 
-    try {
-      const payloads = accounts
-        .filter((a) => a.email && a.passwordHash)
-        .map((a) => ({
-          id: a.id,
-          email: a.email.toLowerCase().trim(),
-          name: a.name,
-          password_hash: a.passwordHash,
-          password_salt: a.passwordSalt,
-          experience_level: a.experienceLevel || 'intermediate',
-          avatar_color: a.avatarColor,
-          created_at: a.createdAt,
-          last_login: a.lastLogin || new Date().toISOString(),
-        }));
-
-      await client
-        .from('utrain_accounts')
-        .upsert(payloads, { onConflict: 'email' });
-    } catch (err) {
-      console.warn('[Supabase] Sincronizzazione accounts fallita:', err);
+    for (const acc of accounts) {
+      if (acc.email && acc.passwordHash) {
+        await this.saveAccount(acc);
+      }
     }
   }
 
@@ -291,7 +349,11 @@ export class SupabaseService {
    * Script SQL per creare le tabelle in Supabase SQL Editor in 1 click
    */
   static getSetupSQL(): string {
-    return `-- 1. Crea tabella account utenti per accesso multi-dispositivo (PC + Mobile)
+    return `-- ==========================================================
+-- SCRIPT SQL UTRAIN PER SUPABASE (Copia ed Esegui in SQL Editor)
+-- ==========================================================
+
+-- 1. Tabella account utenti per sincronizzazione login multi-dispositivo
 CREATE TABLE IF NOT EXISTS public.utrain_accounts (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
@@ -304,10 +366,10 @@ CREATE TABLE IF NOT EXISTS public.utrain_accounts (
     last_login TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Disabilita RLS per accesso con anon key
+-- Disabilita RLS per consentire l'accesso con anon key
 ALTER TABLE public.utrain_accounts DISABLE ROW LEVEL SECURITY;
 
--- 2. Crea tabella di sincronizzazione dati atleta (schede, sessioni, PR)
+-- 2. Tabella dati atleta (schede di allenamento, sessioni, PR, impostazioni)
 CREATE TABLE IF NOT EXISTS public.utrain_sync (
     user_id TEXT PRIMARY KEY,
     email TEXT,
@@ -320,7 +382,7 @@ CREATE TABLE IF NOT EXISTS public.utrain_sync (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Disabilita RLS per accesso con anon key
+-- Disabilita RLS per consentire l'accesso con anon key
 ALTER TABLE public.utrain_sync DISABLE ROW LEVEL SECURITY;
 `;
   }

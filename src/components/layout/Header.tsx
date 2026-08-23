@@ -1,6 +1,7 @@
-import React from 'react';
-import { Dumbbell, Bot, Sparkles, Settings as SettingsIcon, LogIn } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Dumbbell, Bot, Sparkles, Settings as SettingsIcon, LogIn, Cloud, Loader2 } from 'lucide-react';
 import type { User } from '../../types/auth';
+import { StorageService } from '../../services/storage';
 
 interface HeaderProps {
   user: User | null;
@@ -17,6 +18,15 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAuth,
   onOpenProfile,
 }) => {
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>(StorageService.getSyncStatus());
+
+  useEffect(() => {
+    const unsub = StorageService.subscribeSyncStatus((status) => {
+      setSyncStatus(status);
+    });
+    return unsub;
+  }, []);
+
   const initials = user
     ? user.name
         .split(' ')
@@ -102,6 +112,32 @@ export const Header: React.FC<HeaderProps> = ({
             <Bot size={15} />
             <span className="hide-on-mobile">AI Coach</span>
             <Sparkles size={12} style={{ opacity: 0.8 }} />
+          </button>
+
+          {/* Cloud Auto-Sync Indicator & Button */}
+          <button
+            onClick={() => StorageService.syncWithCloud()}
+            className="btn-ghost"
+            style={{
+              padding: '6px',
+              borderRadius: 'var(--radius-full)',
+              color: syncStatus === 'synced' ? '#10b981' : syncStatus === 'error' ? '#f59e0b' : 'var(--text-secondary)',
+            }}
+            title={
+              syncStatus === 'syncing'
+                ? 'Sincronizzazione cloud in corso...'
+                : syncStatus === 'synced'
+                ? 'Dati sincronizzati con Supabase Cloud'
+                : syncStatus === 'error'
+                ? 'Attenzione sincronizzazione (clicca per riprovare)'
+                : 'Sincronizza con Cloud'
+            }
+          >
+            {syncStatus === 'syncing' ? (
+              <Loader2 size={18} className="animate-spin" color="#3b82f6" />
+            ) : (
+              <Cloud size={18} />
+            )}
           </button>
 
           {/* Settings button */}

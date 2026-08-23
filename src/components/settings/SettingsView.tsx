@@ -14,9 +14,13 @@ import {
   RefreshCw,
   Smartphone,
   Wifi,
+  Cloud,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { StorageService } from '../../services/storage';
 import { GeminiService } from '../../services/gemini';
+import { SupabaseService } from '../../services/supabase';
 import { AI_CONFIG } from '../../config/aiConfig';
 import type { UserProfileSettings } from '../../types/workout';
 
@@ -32,6 +36,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [apiKeyInput, setApiKeyInput] = useState<string>(settings.geminiApiKey || '');
   const [showKey, setShowKey] = useState<boolean>(false);
   const [testStatus, setTestStatus] = useState<{ loading: boolean; success?: boolean; message?: string } | null>(null);
+
+  // Supabase Cloud State
+  const initialCredentials = SupabaseService.getCredentials();
+  const [supabaseUrl, setSupabaseUrl] = useState<string>(initialCredentials.url);
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState<string>(initialCredentials.anonKey);
+  const [showSupabaseKey, setShowSupabaseKey] = useState<boolean>(false);
+  const [isTestingSupabase, setIsTestingSupabase] = useState<boolean>(false);
+  const [supabaseStatus, setSupabaseStatus] = useState<{
+    connected?: boolean;
+    accountsTableReady?: boolean;
+    syncTableReady?: boolean;
+    message?: string;
+  } | null>(null);
+  const [copiedSQL, setCopiedSQL] = useState<boolean>(false);
+  const [showSQLDetails, setShowSQLDetails] = useState<boolean>(false);
 
   const [userName, setUserName] = useState<string>(settings.userName || 'Atleta');
   const [experienceLevel, setExperienceLevel] = useState<UserProfileSettings['experienceLevel']>(
@@ -51,6 +70,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const res = await StorageService.syncWithCloud();
     setSyncFeedback(res);
     setIsSyncing(false);
+  };
+
+  const handleSaveSupabaseConfig = async () => {
+    SupabaseService.saveCredentials(supabaseUrl.trim(), supabaseAnonKey.trim());
+    setIsTestingSupabase(true);
+    const check = await SupabaseService.checkConnection();
+    setSupabaseStatus(check);
+    setIsTestingSupabase(false);
+    if (check.connected) {
+      StorageService.silentSync().catch(() => {});
+    }
+  };
+
+  const handleTestSupabase = async () => {
+    setIsTestingSupabase(true);
+    setSupabaseStatus(null);
+    const check = await SupabaseService.checkConnection();
+    setSupabaseStatus(check);
+    setIsTestingSupabase(false);
+  };
+
+  const handleCopySQL = () => {
+    navigator.clipboard.writeText(SupabaseService.getSetupSQL());
+    setCopiedSQL(true);
+    setTimeout(() => setCopiedSQL(false), 2500);
   };
 
   const handleSaveProfile = () => {
@@ -292,6 +336,188 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <button onClick={handleSaveProfile} className="btn-primary" style={{ alignSelf: 'flex-start', padding: '7px 12px', fontSize: '0.8rem' }}>
           Salva Configurazione
         </button>
+      </div>
+
+      {/* Supabase Cloud Sync & Multi-Device Accounts */}
+      <div
+        className="glass-card"
+        style={{
+          padding: '14px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          border: '1px solid rgba(16, 185, 129, 0.4)',
+          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.07) 0%, rgba(18, 21, 30, 0.95) 100%)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              borderRadius: 'var(--radius-sm)',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <Cloud size={18} color="#fff" />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: '#fff' }}>
+                Supabase Cloud (Sincronizzazione Automatica)
+              </h3>
+              <span className="chip chip-green" style={{ fontSize: '0.66rem', padding: '2px 6px' }}>
+                Multi-dispositivo PC & Smartphone
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleTestSupabase}
+              disabled={isTestingSupabase}
+              className="btn-secondary"
+              style={{ padding: '5px 10px', fontSize: '0.76rem' }}
+            >
+              {isTestingSupabase ? 'Verifica...' : 'Verifica Connessione'}
+            </button>
+            <button
+              type="button"
+              onClick={handleCopySQL}
+              className="btn-ghost"
+              style={{ padding: '5px 10px', fontSize: '0.76rem', border: '1px solid var(--border-subtle)' }}
+              title="Copia lo script SQL per creare le tabelle in Supabase"
+            >
+              {copiedSQL ? <Check size={13} color="#34d399" /> : <Copy size={13} />}
+              {copiedSQL ? 'SQL Copiato!' : 'Copia SQL (1-Click)'}
+            </button>
+          </div>
+        </div>
+
+        <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: 0 }}>
+          Sincronizza automaticamente in background allenamenti, schede, PR e credenziali di accesso tra computer e telefono (senza server locale).
+        </p>
+
+        {supabaseStatus && (
+          <div
+            style={{
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.78rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: supabaseStatus.connected && supabaseStatus.accountsTableReady
+                ? 'rgba(16, 185, 129, 0.12)'
+                : supabaseStatus.connected
+                ? 'rgba(245, 158, 11, 0.12)'
+                : 'rgba(239, 68, 68, 0.12)',
+              color: supabaseStatus.connected && supabaseStatus.accountsTableReady
+                ? 'var(--accent-success)'
+                : supabaseStatus.connected
+                ? '#fbbf24'
+                : 'var(--accent-danger)',
+              border: `1px solid ${
+                supabaseStatus.connected && supabaseStatus.accountsTableReady
+                  ? 'rgba(16, 185, 129, 0.3)'
+                  : supabaseStatus.connected
+                  ? 'rgba(245, 158, 11, 0.3)'
+                  : 'rgba(239, 68, 68, 0.3)'
+              }`,
+            }}
+          >
+            {supabaseStatus.connected && supabaseStatus.accountsTableReady ? (
+              <CheckCircle2 size={14} style={{ flexShrink: 0 }} />
+            ) : (
+              <AlertCircle size={14} style={{ flexShrink: 0 }} />
+            )}
+            <span>{supabaseStatus.message}</span>
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+          <div>
+            <label style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+              Project URL Supabase:
+            </label>
+            <input
+              type="text"
+              placeholder="https://xyzcompany.supabase.co"
+              value={supabaseUrl}
+              onChange={(e) => setSupabaseUrl(e.target.value)}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              style={{ fontSize: '0.82rem', fontFamily: 'var(--font-mono)' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+              Anon Public Key:
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showSupabaseKey ? 'text' : 'password'}
+                placeholder="eyJhbGciOi..."
+                value={supabaseAnonKey}
+                onChange={(e) => setSupabaseAnonKey(e.target.value)}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                style={{ paddingRight: 32, fontSize: '0.82rem', fontFamily: 'var(--font-mono)' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowSupabaseKey(!showSupabaseKey)}
+                className="btn-ghost"
+                style={{ position: 'absolute', right: 2, top: 2, padding: 4 }}
+              >
+                {showSupabaseKey ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 2 }}>
+          <button
+            type="button"
+            onClick={handleSaveSupabaseConfig}
+            className="btn-primary"
+            style={{ padding: '7px 14px', fontSize: '0.8rem' }}
+          >
+            Salva Credenziali Cloud
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowSQLDetails(!showSQLDetails)}
+            className="btn-ghost"
+            style={{ fontSize: '0.74rem', color: 'var(--accent-primary)', padding: 0 }}
+          >
+            {showSQLDetails ? 'Nascondi Script SQL' : 'Visualizza Script SQL Tabelle'}
+          </button>
+        </div>
+
+        {showSQLDetails && (
+          <div style={{
+            background: 'var(--bg-main)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '10px 12px',
+            fontSize: '0.72rem',
+            fontFamily: 'var(--font-mono)',
+            color: '#cbd5e1',
+            whiteSpace: 'pre-wrap',
+            maxHeight: 180,
+            overflowY: 'auto',
+          }}>
+            {SupabaseService.getSetupSQL()}
+          </div>
+        )}
       </div>
 
       {/* Data Management & Backup */}

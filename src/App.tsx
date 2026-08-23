@@ -62,11 +62,37 @@ export const App: React.FC = () => {
     // Initialize default demo account if needed
     AuthService.initDefaultAccounts();
 
+    // Sincronizzazione automatica iniziale con Supabase Cloud
+    StorageService.silentSync();
+
+    // Sincronizzazione automatica al cambio scheda / focus e al ritorno online
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        StorageService.silentSync();
+      }
+    };
+    const handleOnline = () => {
+      StorageService.silentSync();
+    };
+
+    window.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('online', handleOnline);
+
+    // Sync periodico automatico ogni 45s a scheda aperta
+    const syncInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        StorageService.silentSync();
+      }
+    }, 45000);
+
     // Subscribe to Auth changes
     const unsubAuth = AuthService.subscribe((user) => {
       setCurrentUser(user);
       setIsAuthModalOpen(!user);
       reloadUserData();
+      if (user) {
+        StorageService.silentSync();
+      }
     });
 
     // Subscribe to storage changes
@@ -75,6 +101,9 @@ export const App: React.FC = () => {
     });
 
     return () => {
+      window.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('online', handleOnline);
+      clearInterval(syncInterval);
       unsubAuth();
       unsubStorage();
     };
