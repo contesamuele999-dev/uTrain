@@ -83,20 +83,24 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     <div style={{
       position: 'fixed',
       inset: 0,
-      background: 'rgba(5, 7, 10, 0.85)',
-      backdropFilter: 'blur(12px)',
+      background: 'rgba(5, 7, 10, 0.88)',
+      backdropFilter: 'blur(14px)',
+      WebkitBackdropFilter: 'blur(14px)',
       zIndex: 150,
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'center',
-      padding: '16px',
+      padding: '16px 12px',
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch',
+      minHeight: '100dvh',
     }}>
       <div
         className="glass-card"
         style={{
           width: '100%',
           maxWidth: 520,
-          maxHeight: '90vh',
+          margin: 'auto 0',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -198,6 +202,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Il tuo nome"
+                autoCapitalize="words"
+                autoCorrect="off"
+                spellCheck={false}
+                autoComplete="name"
+                style={{ minHeight: 42, fontSize: '0.9rem' }}
               />
             </div>
 
@@ -208,6 +217,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <select
                 value={experienceLevel}
                 onChange={(e) => setExperienceLevel(e.target.value as User['experienceLevel'])}
+                style={{ minHeight: 42, fontSize: '0.88rem' }}
               >
                 <option value="beginner">Principiante (&lt; 1 anno)</option>
                 <option value="intermediate">Intermedio (1 - 3 anni)</option>
@@ -215,7 +225,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </select>
             </div>
 
-            <button type="submit" className="btn-secondary" style={{ alignSelf: 'flex-start', padding: '8px 14px', fontSize: '0.82rem' }}>
+            <button type="submit" className="btn-secondary" style={{ alignSelf: 'flex-start', padding: '10px 16px', minHeight: 42, fontSize: '0.84rem', touchAction: 'manipulation' }}>
               <Save size={15} /> Aggiorna Profilo
             </button>
           </form>
@@ -231,7 +241,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   type="button"
                   onClick={() => setIsChangingPass(!isChangingPass)}
                   className="btn-ghost"
-                  style={{ fontSize: '0.78rem', color: 'var(--accent-primary)', padding: '2px 6px' }}
+                  style={{ fontSize: '0.78rem', color: 'var(--accent-primary)', padding: '4px 8px', minHeight: 36, touchAction: 'manipulation' }}
                 >
                   {isChangingPass ? 'Nascondi' : 'Cambia Password'}
                 </button>
@@ -245,6 +255,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     placeholder="Password attuale"
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoComplete="current-password"
+                    style={{ minHeight: 42, fontSize: '0.9rem' }}
                   />
                   <input
                     type="password"
@@ -253,6 +268,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     placeholder="Nuova password (min 6 caratteri)"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoComplete="new-password"
+                    style={{ minHeight: 42, fontSize: '0.9rem' }}
                   />
                   <input
                     type="password"
@@ -261,8 +281,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     placeholder="Conferma nuova password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoComplete="new-password"
+                    style={{ minHeight: 42, fontSize: '0.9rem' }}
                   />
-                  <button type="submit" className="btn-primary" style={{ padding: '8px 14px', fontSize: '0.82rem', alignSelf: 'flex-start' }}>
+                  <button type="submit" className="btn-primary" style={{ padding: '10px 16px', minHeight: 42, fontSize: '0.84rem', alignSelf: 'flex-start', touchAction: 'manipulation' }}>
                     <Lock size={15} /> Salva Nuova Password
                   </button>
                 </form>
